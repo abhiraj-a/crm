@@ -1,11 +1,16 @@
 package com.CRM.Entity;
 
+import jakarta.persistence.*;
+
+import java.time.LocalDateTime;
+import java.util.UUID;
+
 @Entity
 @Table(name = "activity_logs")
 public class ActivityLog {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
+    @GeneratedValue
     private UUID id;
 
     private String entityType;
