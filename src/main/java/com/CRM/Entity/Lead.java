@@ -2,12 +2,14 @@ package com.CRM.Entity;
 
 import jakarta.persistence.*;
 import lombok.Builder;
+import lombok.Data;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
 @Entity
 @Table(name = "leads")
 @Builder
+@Data
 public class Lead {
 
     @Id

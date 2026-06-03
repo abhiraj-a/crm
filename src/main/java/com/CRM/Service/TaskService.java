@@ -1,6 +1,8 @@
 package com.CRM.Service;
 
 import com.CRM.DTO.CreateTaskRequest;
+import com.CRM.DTO.TaskResponse;
+import com.CRM.DTO.UpdateTaskRequest;
 import com.CRM.Entity.*;
 import com.CRM.Repo.DealRepo;
 import com.CRM.Repo.LeadRepo;
@@ -9,74 +11,138 @@ import com.CRM.Repo.UserRepo;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 public class TaskService {
-
     private final TaskRepo taskRepo;
     private final UserRepo userRepo;
     private final LeadRepo leadRepo;
     private final DealRepo dealRepo;
 
-    @Transactional
-    public Task createTask(CreateTaskRequest request, String authifyerId) {
-        // 1. Identify the logged-in user and their organization
-        User currentUser = userRepo.findByAuthifyerId(authifyerId)
+
+    private User getCurrentUser(String authifyerId) {
+        return userRepo.findByAuthifyerId(authifyerId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
+    }
+
+    private Task getAuthorizedTask(UUID taskId, User currentUser) {
+        Task task = taskRepo.findById(taskId)
+                .orElseThrow(() -> new RuntimeException("Task not found"));
+        if (!task.getOrganization().getId().equals(currentUser.getOrganization().getId())) {
+            throw new RuntimeException("Unauthorized access: Task belongs to a different organization.");
+        }
+        return task;
+    }
+
+    // --- THE MAPPER ---
+    private TaskResponse mapToResponse(Task task) {
+        return TaskResponse.builder()
+                .id(task.getId())
+                .title(task.getTitle())
+                .description(task.getDescription())
+                .status(task.getStatus())
+                .deadline(task.getDeadline())
+                .createdAt(task.getCreatedAt())
+
+                .assignedToUserId(task.getAssignedTo() != null ? task.getAssignedTo().getId() : null)
+                .assignedToUserName(task.getAssignedTo() != null ?
+                        task.getAssignedTo().getFirstName() + " " + task.getAssignedTo().getLastName() : "Unassigned")
+
+                .relatedLeadId(task.getRelatedLead() != null ? task.getRelatedLead().getId() : null)
+                .relatedLeadName(task.getRelatedLead() != null ? task.getRelatedLead().getName() : null)
+
+                .relatedDealId(task.getRelatedDeal() != null ? task.getRelatedDeal().getId() : null)
+                .relatedDealTitle(task.getRelatedDeal() != null ? task.getRelatedDeal().getTitle() : null)
+                .build();
+    }
+
+
+    @Transactional
+    public TaskResponse createTask(CreateTaskRequest request, String authifyerId) {
+        User currentUser = getCurrentUser(authifyerId);
+
+        User assignee = request.getAssignedToUserId() != null ?
+                userRepo.findById(request.getAssignedToUserId()).orElse(currentUser) : currentUser;
+
+        Lead relatedLead = request.getRelatedLeadId() != null ?
+                leadRepo.findById(request.getRelatedLeadId()).orElse(null) : null;
+
+        Deal relatedDeal = request.getRelatedDealId() != null ?
+                dealRepo.findById(request.getRelatedDealId()).orElse(null) : null;
 
         Task task = Task.builder()
-                .createdAt(LocalDateTime.now())
                 .title(request.getTitle())
-                .deadline(request.getDeadline())
                 .description(request.getDescription())
+                .deadline(request.getDeadline())
                 .status(TaskStatus.PENDING)
+                .createdAt(LocalDateTime.now())
                 .organization(currentUser.getOrganization())
+                .assignedTo(assignee)
+                .relatedLead(relatedLead)
+                .relatedDeal(relatedDeal)
                 .build();
 
+        return mapToResponse(taskRepo.save(task));
+    }
 
-        // 2. Assign the task (defaults to the person creating it if no ID is provided)
+    public List<TaskResponse> getAllOrganizationTasks(String authifyerId) {
+        User currentUser = getCurrentUser(authifyerId);
+        return taskRepo.findByOrganizationId(currentUser.getOrganization().getId())
+                .stream().map(this::mapToResponse).collect(Collectors.toList());
+    }
+
+    public List<TaskResponse> getMyTasks(String authifyerId) {
+        User currentUser = getCurrentUser(authifyerId);
+        return taskRepo.findByAssignedToId(currentUser.getId())
+                .stream().map(this::mapToResponse).collect(Collectors.toList());
+    }
+
+    public TaskResponse getTaskById(UUID taskId, String authifyerId) {
+        User currentUser = getCurrentUser(authifyerId);
+        return mapToResponse(getAuthorizedTask(taskId, currentUser));
+    }
+
+    @Transactional
+    public TaskResponse updateTask(UUID taskId, UpdateTaskRequest request, String authifyerId) {
+        User currentUser = getCurrentUser(authifyerId);
+        Task task = getAuthorizedTask(taskId, currentUser);
+
+        if (request.getTitle() != null) task.setTitle(request.getTitle());
+        if (request.getDescription() != null) task.setDescription(request.getDescription());
+        if (request.getDeadline() != null) task.setDeadline(request.getDeadline());
+
         if (request.getAssignedToUserId() != null) {
-            User assignee = userRepo.findById(request.getAssignedToUserId())
-                    .orElseThrow(() -> new RuntimeException("Assignee not found"));
-            task.setAssignedTo(assignee);
-        } else {
-            task.setAssignedTo(currentUser);
+            userRepo.findById(request.getAssignedToUserId()).ifPresent(task::setAssignedTo);
         }
-
-        // 3. Link to a Lead (if provided)
         if (request.getRelatedLeadId() != null) {
-            Lead lead = leadRepo.findById(request.getRelatedLeadId())
-                    .orElseThrow(() -> new RuntimeException("Lead not found"));
-            task.setRelatedLead(lead);
+            leadRepo.findById(request.getRelatedLeadId()).ifPresent(task::setRelatedLead);
         }
-
-        // 4. Link to a Deal (if provided)
         if (request.getRelatedDealId() != null) {
-            Deal deal = dealRepo.findById(request.getRelatedDealId())
-                    .orElseThrow(() -> new RuntimeException("Deal not found"));
-            task.setRelatedDeal(deal);
+            dealRepo.findById(request.getRelatedDealId()).ifPresent(task::setRelatedDeal);
         }
 
-        return taskRepo.save(task);
+        return mapToResponse(taskRepo.save(task));
+    }
+
+    @Transactional
+    public TaskResponse updateTaskStatus(UUID taskId, TaskStatus newStatus, String authifyerId) {
+        User currentUser = getCurrentUser(authifyerId);
+        Task task = getAuthorizedTask(taskId, currentUser);
+
+        task.setStatus(newStatus);
+
+        return mapToResponse(taskRepo.save(task));
     }
 
     @Transactional
     public void deleteTask(UUID taskId, String authifyerId) {
-        User currentUser = userRepo.findByAuthifyerId(authifyerId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
-
-        Task task = taskRepo.findById(taskId)
-                .orElseThrow(() -> new RuntimeException("Task not found"));
-
-        // Security Check: Ensure the task belongs to the user's organization
-        if (!task.getOrganization().getId().equals(currentUser.getOrganization().getId())) {
-            throw new RuntimeException("Unauthorized: Cannot delete tasks outside your organization.");
-        }
-
+        User currentUser = getCurrentUser(authifyerId);
+        Task task = getAuthorizedTask(taskId, currentUser);
         taskRepo.delete(task);
     }
 }

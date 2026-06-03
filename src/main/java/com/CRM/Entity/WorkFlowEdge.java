@@ -1,8 +1,11 @@
 package com.CRM.Entity;
 import jakarta.persistence.*;
+import lombok.Data;
+
 import java.util.UUID;
 @Entity
 @Table(name = "workflow_edges")
+@Data
 public class WorkFlowEdge {
 
     @Id

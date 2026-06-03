@@ -9,6 +9,6 @@ import java.util.UUID;
 
 public interface LeadRepo extends JpaRepository<Lead, UUID> {
     Long countByOrganizationIdAndStatus(String organizationId, LeadStatus status);
-
+    List<Lead> findByOrganizationId(UUID organizationId);
     List<Lead> findTop5ByOrganizationIdOrderByScoreDesc(String organizationId);
 }
