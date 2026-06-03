@@ -18,6 +18,6 @@ public class SecurityConfig{
         configuration.setAllowedMethods(List.of("PUT" , "POST","UPDATE","DELETE","OPTIONS"));
         UrlBasedCorsConfigurationSource corsConfigurationSource = new UrlBasedCorsConfigurationSource();
         corsConfigurationSource.registerCorsConfiguration("/**",configuration);
-        return corsConfigurationSource;
+        return configuration;
     }
 }

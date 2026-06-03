@@ -2,6 +2,7 @@ package com.CRM.Entity;
 
 import jakarta.persistence.*;
 import lombok.Builder;
+import lombok.Data;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -9,6 +10,7 @@ import java.util.UUID;
 @Entity
 @Table(name = "users")
 @Builder
+@Data
 public class User {
 
     @Id

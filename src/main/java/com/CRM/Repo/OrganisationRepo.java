@@ -5,7 +5,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.UUID;
 
-public interface OrganisationRepo extends JpaRepository<UUID, Organization> {
+public interface OrganisationRepo extends JpaRepository<Organization, UUID> {
 
 
 }
