@@ -1,40 +1,44 @@
 package com.CRM.Entity;
 
 import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
-@Table(name = "deals")
+@Table(name = "interactions")
 @Data
-public class Deal {
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class Interaction {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    private String title;
-
-    private Double value;
-
     @Enumerated(EnumType.STRING)
-    private DealStage stage;
+    private InteractionType type;
+
+    private String subject;
+
+    @Column(columnDefinition = "TEXT")
+    private String details;
+
+    private LocalDateTime timestamp;
+
+    @ManyToOne
+    private User performedBy;
 
     @ManyToOne
     private Lead lead;
 
     @ManyToOne
-    private User assignedTo;
-
-    @ManyToOne
     private Organization organization;
-
-    private LocalDate expectedCloseDate;
-
-    private LocalDateTime createdAt;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "account_id")

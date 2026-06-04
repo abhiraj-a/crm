@@ -38,4 +38,8 @@ public class Lead {
     private Organization organization;
 
     private LocalDateTime createdAt;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "account_id")
+    private Account account;
 }

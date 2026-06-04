@@ -36,14 +36,16 @@ public class LeadService {
                 .company(request.getCompany())
                 .source(request.getSource())
                 .status(LeadStatus.CONTACTED)
-                .score(0)
+                // Use the provided score, or default to 0 if left blank
+                .score(request.getScore() != null ? request.getScore() : 0)
                 .createdAt(LocalDateTime.now())
                 .organization(currentUser.getOrganization())
                 .assignedTo(currentUser) // Default assignment
                 .build();
 
         Lead savedLead = leadRepo.save(lead);
-        // 2. Broadcast the event to the rest of the application
+
+        // Broadcast the event to the rest of the application
         eventPublisher.publishEvent(new LeadCreatedEvent(this, savedLead, authifyerId));
 
         return mapToResponse(savedLead);

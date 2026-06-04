@@ -20,4 +20,6 @@ public class WorkFlowEdge {
 
     @ManyToOne
     private WorkFlowNode targetNode;
+
+    private String conditionLabel;
 }

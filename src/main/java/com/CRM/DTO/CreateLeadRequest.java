@@ -9,4 +9,5 @@ public class CreateLeadRequest {
     private String phone;
     private String company;
     private String source;
+    private Integer score;
 }

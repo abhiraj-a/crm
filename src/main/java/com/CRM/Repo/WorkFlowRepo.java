@@ -10,4 +10,7 @@ import java.util.UUID;
 public interface WorkFlowRepo extends JpaRepository<WorkFlow, UUID> {
     // Find active workflows for a specific event in an organization
     List<WorkFlow> findByOrganizationIdAndTriggerTypeAndActiveTrue(UUID organizationId, TriggerType triggerType);
+
+    // Find all workflows for an organization
+    List<WorkFlow> findByOrganizationId(UUID organizationId);
 }

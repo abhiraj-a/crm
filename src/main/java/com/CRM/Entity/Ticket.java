@@ -10,29 +10,37 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
-@Table(name = "notifications")
+@Table(name = "tickets")
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class Notification {
+public class Ticket {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    private String title;
+    private String subject;
 
-    private String message;
+    @Column(columnDefinition = "TEXT")
+    private String description;
 
-    @Builder.Default
-    private Boolean isRead = false;
+    @Enumerated(EnumType.STRING)
+    private TicketStatus status;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    private User user;
+    @Enumerated(EnumType.STRING)
+    private TicketPriority priority;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne
+    private User assignedTo;
+
+    @ManyToOne
+    private Lead lead;
+
+    @ManyToOne
     private Organization organization;
 
     private LocalDateTime createdAt;
+    private LocalDateTime closedAt;
 }

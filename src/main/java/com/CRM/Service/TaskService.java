@@ -8,7 +8,9 @@ import com.CRM.Repo.DealRepo;
 import com.CRM.Repo.LeadRepo;
 import com.CRM.Repo.TaskRepo;
 import com.CRM.Repo.UserRepo;
+import com.CRM.Event.TaskCompletedEvent;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
@@ -23,6 +25,7 @@ public class TaskService {
     private final UserRepo userRepo;
     private final LeadRepo leadRepo;
     private final DealRepo dealRepo;
+    private final ApplicationEventPublisher eventPublisher;
 
 
     private User getCurrentUser(String authifyerId) {
@@ -135,8 +138,14 @@ public class TaskService {
         Task task = getAuthorizedTask(taskId, currentUser);
 
         task.setStatus(newStatus);
+        Task savedTask = taskRepo.save(task);
 
-        return mapToResponse(taskRepo.save(task));
+        // Fire event for workflow automation when a task is completed
+        if (newStatus == TaskStatus.COMPLETED) {
+            eventPublisher.publishEvent(new TaskCompletedEvent(this, savedTask, authifyerId));
+        }
+
+        return mapToResponse(savedTask);
     }
 
     @Transactional
