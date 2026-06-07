@@ -16,7 +16,6 @@ public class Organization {
     @Id
     @GeneratedValue
     private UUID id;
-    private String orgId;
     private String companyName;
     private String companyAddress;
     private int companySize;

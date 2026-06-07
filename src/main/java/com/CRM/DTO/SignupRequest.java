@@ -14,4 +14,3 @@ public class SignupRequest {
     private int companySize;
     private String phoneNumber;
 }
-

@@ -1,5 +1,6 @@
 package com.CRM.Service;
 
+import com.CRM.DTO.CreateAccountRequest;
 import com.CRM.Entity.Account;
 import com.CRM.Entity.Deal;
 import com.CRM.Entity.Lead;
@@ -30,16 +31,29 @@ public class AccountService {
                 .orElseThrow(() -> new RuntimeException("User not found"));
     }
 
+    private Account getAuthorizedAccount(UUID accountId, User currentUser) {
+        Account account = accountRepo.findById(accountId)
+                .orElseThrow(() -> new RuntimeException("Account not found"));
+        if (!account.getOrganization().getId().equals(currentUser.getOrganization().getId())) {
+            throw new RuntimeException("Unauthorized access: Account belongs to a different organization.");
+        }
+        return account;
+    }
+
     @Transactional
-    public Account createAccount(String companyName, String industry, UUID parentAccountId, String authifyerId) {
+    public Account createAccount(CreateAccountRequest request, String authifyerId) {
         User currentUser = getCurrentUser(authifyerId);
 
-        Account parent = parentAccountId != null ?
-                accountRepo.findById(parentAccountId).orElse(null) : null;
+        Account parent = request.getParentAccountId() != null ?
+                accountRepo.findById(request.getParentAccountId()).orElse(null) : null;
 
         Account account = Account.builder()
-                .companyName(companyName)
-                .industry(industry)
+                .companyName(request.getCompanyName())
+                .industry(request.getIndustry())
+                .website(request.getWebsite())
+                .employeeCount(request.getEmployeeCount())
+                .annualRevenue(request.getAnnualRevenue())
+                .description(request.getDescription())
                 .parentAccount(parent)
                 .organization(currentUser.getOrganization())
                 .assignedTo(currentUser)
@@ -49,20 +63,37 @@ public class AccountService {
         return accountRepo.save(account);
     }
 
+    public List<Account> getAllAccounts(String authifyerId) {
+        User currentUser = getCurrentUser(authifyerId);
+        return accountRepo.findByOrganizationId(currentUser.getOrganization().getId());
+    }
+
+    public Account getAccountById(UUID accountId, String authifyerId) {
+        User currentUser = getCurrentUser(authifyerId);
+        return getAuthorizedAccount(accountId, currentUser);
+    }
+
+    @Transactional
+    public void deleteAccount(UUID accountId, String authifyerId) {
+        User currentUser = getCurrentUser(authifyerId);
+        Account account = getAuthorizedAccount(accountId, currentUser);
+        accountRepo.delete(account);
+    }
+
     // --- HIERARCHY & RELATED DATA FETCHING ---
 
     public List<Account> getChildAccounts(UUID parentAccountId, String authifyerId) {
-        // In a real app, verify tenant isolation here before returning
+        // Verify the user has access to the parent before returning children
+        User currentUser = getCurrentUser(authifyerId);
+        getAuthorizedAccount(parentAccountId, currentUser);
         return accountRepo.findByParentAccountId(parentAccountId);
     }
 
     public List<Lead> getRelatedContacts(UUID accountId) {
-        // You would need to add findByAccountId in LeadRepo
         return leadRepo.findByAccountId(accountId);
     }
 
     public List<Deal> getRelatedOpportunities(UUID accountId) {
-        // You would need to add findByAccountId in DealRepo
         return dealRepo.findByAccountId(accountId);
     }
-}
+}

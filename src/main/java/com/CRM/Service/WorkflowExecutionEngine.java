@@ -1,7 +1,6 @@
 package com.CRM.Service;
-
-import com.CRM.Entity.*;
 import com.CRM.Event.DealUpdatedEvent;
+import com.CRM.Entity.*;
 import com.CRM.Event.LeadCreatedEvent;
 import com.CRM.Event.TaskCompletedEvent;
 import com.CRM.Repo.*;
@@ -88,7 +87,8 @@ public class WorkflowExecutionEngine {
     }
 
     // ======================================================================
-    // CORE EXECUTION — starts a new workflow run
+    // CORE EXECUTION — starts a new
+    // workflow run
     // ======================================================================
 
     @Transactional
@@ -389,8 +389,19 @@ public class WorkflowExecutionEngine {
                     leadRepo.save(lead);
                     log.info("Workflow Action: Auto-Assigned lead {} to {}", lead.getName(), user.getFirstName());
                 });
+            } else if ("Deal".equals(entityType)) {
+                dealRepo.findById(entityId).ifPresent(deal -> {
+                    deal.setAssignedTo(user);
+                    dealRepo.save(deal);
+                    log.info("Workflow Action: Auto-Assigned deal {} to {}", deal.getTitle(), user.getFirstName());
+                });
+            } else if ("Task".equals(entityType)) {
+                taskRepo.findById(entityId).ifPresent(task -> {
+                    task.setAssignedTo(user);
+                    taskRepo.save(task);
+                    log.info("Workflow Action: Auto-Assigned task {} to {}", task.getTitle(), user.getFirstName());
+                });
             }
-            // Extensible: add Deal/Task assignment here
         });
     }
 
@@ -404,6 +415,18 @@ public class WorkflowExecutionEngine {
                 lead.setStatus(LeadStatus.valueOf(statusString));
                 leadRepo.save(lead);
                 log.info("Workflow Action: Updated lead {} status to {}", lead.getName(), statusString);
+            });
+        } else if ("Deal".equals(entityType)) {
+            dealRepo.findById(entityId).ifPresent(deal -> {
+                deal.setStage(DealStage.valueOf(statusString));
+                dealRepo.save(deal);
+                log.info("Workflow Action: Updated deal {} stage to {}", deal.getTitle(), statusString);
+            });
+        } else if ("Task".equals(entityType)) {
+            taskRepo.findById(entityId).ifPresent(task -> {
+                task.setStatus(TaskStatus.valueOf(statusString));
+                taskRepo.save(task);
+                log.info("Workflow Action: Updated task {} status to {}", task.getTitle(), statusString);
             });
         }
     }
@@ -452,6 +475,36 @@ public class WorkflowExecutionEngine {
                     log.info("Workflow Action: Created notification for user {}", lead.getAssignedTo().getFirstName());
                 }
             });
+        } else if ("Deal".equals(entityType)) {
+            dealRepo.findById(entityId).ifPresent(deal -> {
+                if (deal.getAssignedTo() != null) {
+                    Notification notification = Notification.builder()
+                            .title(title)
+                            .message(message + " — Deal: " + deal.getTitle())
+                            .isRead(false)
+                            .user(deal.getAssignedTo())
+                            .organization(deal.getOrganization())
+                            .createdAt(LocalDateTime.now())
+                            .build();
+                    notificationRepo.save(notification);
+                    log.info("Workflow Action: Created notification for user {}", deal.getAssignedTo().getFirstName());
+                }
+            });
+        } else if ("Task".equals(entityType)) {
+            taskRepo.findById(entityId).ifPresent(task -> {
+                if (task.getAssignedTo() != null) {
+                    Notification notification = Notification.builder()
+                            .title(title)
+                            .message(message + " — Task: " + task.getTitle())
+                            .isRead(false)
+                            .user(task.getAssignedTo())
+                            .organization(task.getOrganization())
+                            .createdAt(LocalDateTime.now())
+                            .build();
+                    notificationRepo.save(notification);
+                    log.info("Workflow Action: Created notification for user {}", task.getAssignedTo().getFirstName());
+                }
+            });
         }
     }
 
@@ -478,6 +531,24 @@ public class WorkflowExecutionEngine {
 
                 taskRepo.save(followUpTask);
                 log.info("Workflow Action: Scheduled task '{}' for lead {}", taskTitle, lead.getName());
+            });
+        } else if ("Deal".equals(entityType)) {
+            dealRepo.findById(entityId).ifPresent(deal -> {
+                Task followUpTask = Task.builder()
+                        .title(taskTitle)
+                        .description(taskDescription.isEmpty()
+                                ? "Automated task generated by workflow for deal: " + deal.getTitle()
+                                : taskDescription)
+                        .deadline(LocalDate.now().plusDays(daysDue))
+                        .status(TaskStatus.PENDING)
+                        .createdAt(LocalDateTime.now())
+                        .organization(deal.getOrganization())
+                        .assignedTo(deal.getAssignedTo())
+                        .relatedDeal(deal)
+                        .build();
+
+                taskRepo.save(followUpTask);
+                log.info("Workflow Action: Scheduled task '{}' for deal {}", taskTitle, deal.getTitle());
             });
         }
     }

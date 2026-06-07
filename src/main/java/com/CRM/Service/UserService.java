@@ -25,7 +25,7 @@ public class UserService {
         User user = userRepo.findByAuthifyerId(authifyerId).orElseThrow(RuntimeException::new);
         DashboardDTO dashboardDTO = DashboardDTO.builder()
                  .totalPipelineValue(dealRepo.sumTotalPipelineValue(user.getOrganization().getId()))
-                 .newLeadsCount(leadRepo.countByOrganizationIdAndStatus(user.getOrganization().getOrgId(), LeadStatus.CONTACTED))
+                 .newLeadsCount(leadRepo.countByOrganizationIdAndStatus(user.getOrganization().getId(), LeadStatus.CONTACTED))
                  .pendingTasks(taskRepo.countByAssignedToIdAndStatusNot(user.getId(), TaskStatus.COMPLETED))
                 .build();
         return dashboardDTO;
