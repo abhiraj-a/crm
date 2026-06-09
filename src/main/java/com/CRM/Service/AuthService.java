@@ -17,13 +17,12 @@ public class AuthService {
     private final UserRepo userRepo;
     private final OrganisationRepo organizationRepo;
 
-    public void singup(SignupRequest signupRequest){
+    public void signup(SignupRequest signupRequest){
         Organization organization = Organization.builder()
                 .companyName(signupRequest.getCompanyName())
                 .companyAddress(signupRequest.getCompanyAddress())
                 .createdAt(LocalDateTime.now())
                 .companySize(signupRequest.getCompanySize())
-                .orgId()
                 .build();
 
         User user = User.builder()
@@ -33,7 +32,7 @@ public class AuthService {
                 .authifyerId(signupRequest.getAuthifyerId())
                 .organization(organization)
                 .phoneNumber(signupRequest.getPhoneNumber())
-                .jobTitle(signupRequest.g)
+                .jobTitle(signupRequest.getJobTitle())
                 .role(Role.ADMIN)
                 .email(signupRequest.getEmail())
                 .build();

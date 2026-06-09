@@ -13,4 +13,5 @@ public class SignupRequest {
     private String companyAddress;
     private int companySize;
     private String phoneNumber;
+    private String jobTitle;
 }

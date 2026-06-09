@@ -8,9 +8,9 @@ import java.util.List;
 import java.util.UUID;
 
 public interface LeadRepo extends JpaRepository<Lead, UUID> {
-    Long countByOrganizationIdAndStatus(String organizationId, LeadStatus status);
+    Long countByOrganizationIdAndStatus(UUID organizationId, LeadStatus status);
     List<Lead> findByOrganizationId(UUID organizationId);
-    List<Lead> findTop5ByOrganizationIdOrderByScoreDesc(String organizationId);
+    List<Lead> findTop5ByOrganizationIdOrderByScoreDesc(UUID organizationId);
 
     List<Lead> findByAccountId(UUID accountId);
 }

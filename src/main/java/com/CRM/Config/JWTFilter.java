@@ -10,6 +10,7 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -22,6 +23,7 @@ import java.util.Base64;
 import java.util.Collections;
 
 @RequiredArgsConstructor
+@Slf4j
 public  class JWTFilter extends OncePerRequestFilter {
     private final JwksProvider jwksProvider;
     @Value("${authifyer.issuer}")
@@ -60,8 +62,10 @@ public  class JWTFilter extends OncePerRequestFilter {
                         .parseSignedClaims(token)
                         .getPayload();
 
+            log.info("Setting security context for Authifyer Id : " + claims.getSubject());
+
                 Principal principal = Principal.builder()
-                        .authifyerId(authifyerId)
+                        .authifyerId(claims.getSubject())
                         .build();
 
 

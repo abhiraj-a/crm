@@ -24,27 +24,27 @@ import java.util.List;
 @RequiredArgsConstructor
 public class SecurityConfig{
 
-//    private final JWTFilter jwtFilter;
-//    @Bean
-//    public SecurityFilterChain filterChain(HttpSecurity httpSecurity){
-//        return httpSecurity.cors(Customizer.withDefaults())
-//                .sessionManagement(s->s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-//                .authorizeHttpRequests(auth -> auth
-//                        .requestMatchers("/api/v1/signup").permitAll()
-//                        .anyRequest().authenticated())
-//                .csrf(AbstractHttpConfigurer::disable)
-//                .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
-//                .build();
-//    }
-//
-//    @Bean
-//    public CorsConfigurationSource configuration(){
-//        CorsConfiguration configuration = new CorsConfiguration();
-//        configuration.setAllowCredentials(true);
-//        configuration.setAllowedOriginPatterns(List.of("*"));
-//        configuration.setAllowedMethods(List.of("PUT" , "POST","UPDATE","DELETE","OPTIONS"));
-//        UrlBasedCorsConfigurationSource corsConfigurationSource = new UrlBasedCorsConfigurationSource();
-//        corsConfigurationSource.registerCorsConfiguration("/**",configuration);
-//        return corsConfigurationSource;
-//    }
+    private final JWTFilter jwtFilter;
+    @Bean
+    public SecurityFilterChain filterChain(HttpSecurity httpSecurity){
+        return httpSecurity.cors(Customizer.withDefaults())
+                .sessionManagement(s->s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers("/api/v1/signup").permitAll()
+                        .anyRequest().authenticated())
+                .csrf(AbstractHttpConfigurer::disable)
+                .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
+                .build();
+    }
+
+    @Bean
+    public CorsConfigurationSource configuration(){
+        CorsConfiguration configuration = new CorsConfiguration();
+        configuration.setAllowCredentials(true);
+        configuration.setAllowedOriginPatterns(List.of("*"));
+        configuration.setAllowedMethods(List.of("PUT" , "POST","UPDATE","DELETE","OPTIONS"));
+        UrlBasedCorsConfigurationSource corsConfigurationSource = new UrlBasedCorsConfigurationSource();
+        corsConfigurationSource.registerCorsConfiguration("/**",configuration);
+        return corsConfigurationSource;
+    }
 }
