@@ -36,6 +36,6 @@ public class AuthService {
                 .role(Role.ADMIN)
                 .email(signupRequest.getEmail())
                 .build();
-
+        userRepo.save(user);
     }
 }

@@ -36,9 +36,8 @@ public class WorkflowExecutionEngine {
     private final WorkflowExecutionRepo workflowExecutionRepo;
     private final ApprovalRequestRepo approvalRequestRepo;
     private final ScheduledWorkflowActionRepo scheduledWorkflowActionRepo;
-
     private final EmailService emailService;
-    private final ObjectMapper objectMapper;
+    private  ObjectMapper objectMapper;
 
     // ======================================================================
     // EVENT LISTENERS — Multi-Trigger Support

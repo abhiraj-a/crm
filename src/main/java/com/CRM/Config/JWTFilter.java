@@ -14,6 +14,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 import java.io.IOException;
 import java.security.NoSuchAlgorithmException;
@@ -24,14 +25,31 @@ import java.util.Collections;
 
 @RequiredArgsConstructor
 @Slf4j
+@Component
 public  class JWTFilter extends OncePerRequestFilter {
     private final JwksProvider jwksProvider;
     @Value("${authifyer.issuer}")
     private String authifyerIssuer;
 
+
+
+
+    @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) throws ServletException {
+        log.warn("Should not filetr");
+        String path = request.getRequestURI();
+        return path.startsWith("/api/v1/signup");
+    }
+
+
+
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
 
+        if("OPTIONS".equalsIgnoreCase(request.getMethod())){
+            filterChain.doFilter(request,response);
+            return;
+        }
         String authHeader = request.getHeader("Authorization");
 
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
@@ -76,6 +94,7 @@ public  class JWTFilter extends OncePerRequestFilter {
                                 Collections.emptyList()
                         );
 
+                log.warn("Setting security context - " + authentication);
 
                 SecurityContextHolder.getContext()
                         .setAuthentication(authentication);
