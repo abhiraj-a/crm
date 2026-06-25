@@ -39,7 +39,7 @@ public class SecurityConfig{
     }
 
     @Bean
-    public CorsConfigurationSource configuration(){
+    public CorsConfigurationSource corsConfigurationSource(){
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowedHeaders(List.of("*"));
         configuration.setAllowCredentials(true);

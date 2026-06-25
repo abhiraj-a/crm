@@ -59,7 +59,7 @@ public class TaskController {
         }
     }
 
-    @PatchMapping("/{taskId}/status")
+    @PutMapping("/{taskId}/status")
     public ResponseEntity<?> updateTaskStatus(@PathVariable UUID taskId, @RequestParam TaskStatus status, @AuthenticationPrincipal Principal principal) {
         try {
             return ResponseEntity.ok(taskService.updateTaskStatus(taskId, status, principal.getAuthifyerId()));

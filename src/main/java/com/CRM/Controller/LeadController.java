@@ -56,7 +56,7 @@ public class LeadController {
         }
     }
 
-    @PatchMapping("/{leadId}/status")
+    @PutMapping("/{leadId}/status")
     public ResponseEntity<?> updateLeadStatus(@PathVariable UUID leadId, @RequestParam LeadStatus status, @AuthenticationPrincipal Principal principal) {
         try {
             return ResponseEntity.ok(leadService.updateLeadStatus(leadId, status, principal.getAuthifyerId()));

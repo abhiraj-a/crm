@@ -24,6 +24,7 @@ public class AuthService {
                 .createdAt(LocalDateTime.now())
                 .companySize(signupRequest.getCompanySize())
                 .build();
+        organizationRepo.save(organization);
 
         User user = User.builder()
                 .createdAt(LocalDateTime.now())

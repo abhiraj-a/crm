@@ -3,11 +3,13 @@ package com.CRM.DTO;
 import com.CRM.Entity.NodeType;
 import com.CRM.Entity.TriggerType;
 import lombok.Data;
+import lombok.Getter;
 
 import java.util.List;
 import java.util.UUID;
 
 @Data
+@Getter
 public class CreateWorkflowRequest {
     private String name;
     private String description;
@@ -17,6 +19,7 @@ public class CreateWorkflowRequest {
     private List<WorkflowEdgeDTO> edges;
 
     @Data
+    @Getter
     public static class WorkflowNodeDTO {
         private String tempId; // Temporary client-side ID for edge references
         private NodeType nodeType;
@@ -26,6 +29,7 @@ public class CreateWorkflowRequest {
     }
 
     @Data
+    @Getter
     public static class WorkflowEdgeDTO {
         private String sourceTempId; // References a node's tempId
         private String targetTempId; // References a node's tempId

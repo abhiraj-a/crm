@@ -1,14 +1,15 @@
 package com.CRM.DTO;
 
-import lombok.Builder;
-import lombok.Data;
-import lombok.Getter;
+import jakarta.annotation.security.DenyAll;
+import lombok.*;
 
 import java.time.LocalDate;
 import java.util.UUID;
 
 @Builder
 @Getter
+@NoArgsConstructor
+@AllArgsConstructor
 public class CreateTaskRequest {
     private String title;
     private String description;

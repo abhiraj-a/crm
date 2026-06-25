@@ -1,12 +1,16 @@
 package com.CRM.DTO;
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
 import java.util.UUID;
 
 @Builder
 @Data
+@NoArgsConstructor
+@AllArgsConstructor
 public class UpdateTaskRequest {
 
     private String title;

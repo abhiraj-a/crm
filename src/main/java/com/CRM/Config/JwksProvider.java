@@ -2,6 +2,7 @@ package com.CRM.Config;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import java.io.IOException;
@@ -21,6 +22,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 @Component
+@Slf4j
 public class JwksProvider {
 
     @Value("${authifyer.jwks-url}")
@@ -53,6 +55,16 @@ public class JwksProvider {
 
         HttpResponse<String> response = client.send(request ,HttpResponse.BodyHandlers.ofString());
 
+
+        System.out.println("STATUS = " + response.statusCode());
+        System.out.println("BODY = ");
+        System.out.println(response.body());
+        System.out.println(
+                response.headers()
+                        .firstValue("Content-Type")
+                        .orElse("missing")
+        );
+        log.warn("incomng response : " + response);
         if (response.statusCode() != 200) {
             throw new RuntimeException("Failed to fetch JWKS: " + response.statusCode());
         }
@@ -70,7 +82,6 @@ public class JwksProvider {
 
                     String n = key.get("n").asText();
                     String e = key.get("e").asText();
-
 
                     PublicKey publicKey =createPublicKey(n,e);
                     cache.put(kid,publicKey);

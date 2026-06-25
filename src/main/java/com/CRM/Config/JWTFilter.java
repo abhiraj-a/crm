@@ -51,8 +51,11 @@ public  class JWTFilter extends OncePerRequestFilter {
             return;
         }
         String authHeader = request.getHeader("Authorization");
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            response.sendError(HttpServletResponse.SC_FORBIDDEN);
+            return;
+        }
 
-        if (authHeader != null && authHeader.startsWith("Bearer ")) {
 
             String token = authHeader.substring(7);
             String[] chunks = token.split("\\.");
@@ -64,7 +67,10 @@ public  class JWTFilter extends OncePerRequestFilter {
             JsonNode node = mapper.readTree(headerJson);
             String kid = node.get("kid").asText();
 
-            String authifyerId = node.get("sub").asText();
+            String payloadJson = new String(Base64.getUrlDecoder().decode(chunks[1]));
+            JsonNode payload = mapper.readTree(payloadJson);
+            String authifyerId = payload.get("sub").asText();
+            log.warn("Authifyer Id : " + authifyerId);
             PublicKey publicKey =
                     null;
             try {
@@ -74,6 +80,7 @@ public  class JWTFilter extends OncePerRequestFilter {
             }
 
                 Claims claims = Jwts.parser()
+                        .clockSkewSeconds(2)
                         .verifyWith(publicKey)
                         .requireIssuer(authifyerIssuer)
                         .build()
@@ -85,6 +92,7 @@ public  class JWTFilter extends OncePerRequestFilter {
                 Principal principal = Principal.builder()
                         .authifyerId(claims.getSubject())
                         .build();
+
 
 
                 UsernamePasswordAuthenticationToken authentication =
@@ -100,6 +108,6 @@ public  class JWTFilter extends OncePerRequestFilter {
                         .setAuthentication(authentication);
                 filterChain.doFilter(request, response);
             }
-        }
+
     }
 
