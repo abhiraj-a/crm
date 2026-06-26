@@ -189,63 +189,15 @@ public class WorkflowExecutionEngine {
 
     private void handleApprovalNode(WorkFlowNode node, String entityType, UUID entityId, WorkflowExecution execution) {
         try {
-            JsonNode config = objectMapper.readTree(node.getConfiguration());
-            String approverId = config.has("approverId") ? config.get("approverId").asText() : null;
-            String title = config.has("title") ? config.get("title").asText() : "Approval Required";
-            String description = config.has("description") ? config.get("description").asText() : "";
+            String title = "Approval Required";
+            String description = "Approval required for " + entityType;
 
             // Pause the execution
             execution.setStatus(WorkflowExecutionStatus.PAUSED_FOR_APPROVAL);
             execution.setPausedAtNode(node);
             workflowExecutionRepo.save(execution);
 
-            // Find the approver
-            User approver = null;
-            if (approverId != null) {
-                approver = userRepo.findById(UUID.fromString(approverId)).orElse(null);
-            }
-
-            if (approver == null) {
-                log.error("Approval node {} has no valid approver configured", node.getId());
-                execution.setStatus(WorkflowExecutionStatus.FAILED);
-                workflowExecutionRepo.save(execution);
-                return;
-            }
-
-            // Create the approval request
-            ApprovalRequest request = ApprovalRequest.builder()
-                    .workflowExecution(execution)
-                    .approver(approver)
-                    .status(ApprovalStatus.PENDING)
-                    .requestTitle(title)
-                    .requestDescription(description + " [Entity: " + entityType + " " + entityId + "]")
-                    .organization(execution.getOrganization())
-                    .createdAt(LocalDateTime.now())
-                    .build();
-            approvalRequestRepo.save(request);
-
-            // Create an in-app notification for the approver
-            Notification notification = Notification.builder()
-                    .title("Approval Required: " + title)
-                    .message(description)
-                    .isRead(false)
-                    .user(approver)
-                    .organization(execution.getOrganization())
-                    .createdAt(LocalDateTime.now())
-                    .build();
-            notificationRepo.save(notification);
-
-            // Also send an email notification to the approver
-            emailService.sendEmail(
-                    approver.getEmail(),
-                    "CRM Approval Required: " + title,
-                    "You have a pending approval request.\n\n" +
-                            "Title: " + title + "\n" +
-                            "Description: " + description + "\n\n" +
-                            "Please log in to your CRM dashboard to approve or reject."
-            );
-
-            log.info("Workflow paused for approval. Approver: {}, Title: {}", approver.getFirstName(), title);
+            log.info("Workflow paused for approval. Title: {}", title);
 
         } catch (Exception e) {
             log.error("Failed to handle approval node {}: {}", node.getId(), e.getMessage());
@@ -260,9 +212,8 @@ public class WorkflowExecutionEngine {
 
     private void handleDelayNode(WorkFlowNode node, String entityType, UUID entityId, WorkflowExecution execution) {
         try {
-            JsonNode config = objectMapper.readTree(node.getConfiguration());
-            int delayHours = config.has("delayHours") ? config.get("delayHours").asInt() : 0;
-            int delayDays = config.has("delayDays") ? config.get("delayDays").asInt() : 0;
+            int delayHours = 24; // Default to 24 hours if no config is available
+            int delayDays = 0;
 
             LocalDateTime scheduledTime = LocalDateTime.now()
                     .plusHours(delayHours)
@@ -300,24 +251,8 @@ public class WorkflowExecutionEngine {
     // ======================================================================
 
     private boolean evaluateConditionNode(WorkFlowNode node, String entityType, UUID entityId) throws Exception {
-        if (node.getConfiguration() == null || node.getConfiguration().isEmpty()) return false;
-
-        JsonNode config = objectMapper.readTree(node.getConfiguration());
-        String field = config.path("field").asText();
-        String operator = config.path("operator").asText();
-        String value = config.path("value").asText();
-
-        if ("Lead".equals(entityType)) {
-            Lead lead = leadRepo.findById(entityId).orElse(null);
-            if (lead == null) return false;
-            return evaluateLeadCondition(lead, field, operator, value);
-        } else if ("Deal".equals(entityType)) {
-            Deal deal = findDealById(entityId);
-            if (deal == null) return false;
-            return evaluateDealCondition(deal, field, operator, value);
-        }
-
-        return false;
+        // Condition evaluation logic removed since configuration is no longer used
+        return true; // Default to true to allow flow to continue
     }
 
     private boolean evaluateLeadCondition(Lead lead, String field, String operator, String value) {
@@ -361,19 +296,18 @@ public class WorkflowExecutionEngine {
     // ======================================================================
 
     private void executeActionNode(WorkFlowNode node, String entityType, UUID entityId) throws Exception {
-        if (node.getConfiguration() == null || node.getConfiguration().isEmpty()) return;
-
-        JsonNode config = objectMapper.readTree(node.getConfiguration());
-        String actionType = config.has("actionType") ? config.get("actionType").asText() : "UNKNOWN";
-
-        switch (actionType) {
-            case "AUTO_ASSIGN" -> handleAutoAssign(config, entityType, entityId);
-            case "AUTO_UPDATE_STATUS" -> handleAutoUpdateStatus(config, entityType, entityId);
-            case "SEND_EMAIL" -> handleSendEmail(config, entityType, entityId);
-            case "CREATE_NOTIFICATION" -> handleCreateNotification(config, entityType, entityId);
-            case "SCHEDULE_TASK" -> handleScheduleTask(config, entityType, entityId);
-            default -> log.warn("Workflow Engine encountered an unknown action type: {}", actionType);
+        log.info("Workflow Action node reached for {} {}", entityType, entityId);
+        
+        // Since frontend config is currently disabled, we default all ACTION nodes to Schedule a Task
+        if (objectMapper == null) {
+            objectMapper = new ObjectMapper();
         }
+        JsonNode defaultConfig = objectMapper.createObjectNode()
+                .put("title", "Automated Follow-up")
+                .put("daysDue", 1)
+                .put("description", "Auto-generated by Workflow Engine");
+
+        handleScheduleTask(defaultConfig, entityType, entityId);
     }
 
     // --- AUTO_ASSIGN ---

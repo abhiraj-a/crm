@@ -30,7 +30,6 @@ public class WorkflowResponse {
     public static class NodeResponse {
         private UUID id;
         private NodeType nodeType;
-        private String configuration;
         private Double positionX;
         private Double positionY;
     }

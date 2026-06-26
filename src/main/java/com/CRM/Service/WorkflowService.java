@@ -50,7 +50,6 @@ public class WorkflowService {
                 WorkFlowNode node = new WorkFlowNode();
                 node.setWorkflow(workflow);
                 node.setNodeType(nodeDTO.getNodeType());
-                node.setConfiguration(nodeDTO.getConfiguration());
                 node.setPositionX(nodeDTO.getPositionX());
                 node.setPositionY(nodeDTO.getPositionY());
                 node = workFlowNodeRepo.save(node);
@@ -181,7 +180,6 @@ public class WorkflowService {
                 .map(n -> WorkflowResponse.NodeResponse.builder()
                         .id(n.getId())
                         .nodeType(n.getNodeType())
-                        .configuration(n.getConfiguration())
                         .positionX(n.getPositionX())
                         .positionY(n.getPositionY())
                         .build())

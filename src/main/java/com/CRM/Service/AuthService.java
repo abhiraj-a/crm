@@ -18,6 +18,9 @@ public class AuthService {
     private final OrganisationRepo organizationRepo;
 
     public void signup(SignupRequest signupRequest){
+        if(userRepo.existsByAuthifyerId(signupRequest.getAuthifyerId())){
+            throw new RuntimeException("User already exists");
+        }
         Organization organization = Organization.builder()
                 .companyName(signupRequest.getCompanyName())
                 .companyAddress(signupRequest.getCompanyAddress())
