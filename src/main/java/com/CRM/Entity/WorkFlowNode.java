@@ -22,6 +22,9 @@ public class WorkFlowNode {
     @Enumerated(EnumType.STRING)
     private NodeType nodeType;
 
+    @Column(columnDefinition = "jsonb")
+    private String configuration;
+
     private Double positionX;
 
     private Double positionY;

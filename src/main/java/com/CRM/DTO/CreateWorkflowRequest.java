@@ -2,6 +2,7 @@ package com.CRM.DTO;
 
 import com.CRM.Entity.NodeType;
 import com.CRM.Entity.TriggerType;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import lombok.Data;
 import lombok.Getter;
@@ -28,6 +29,7 @@ public class CreateWorkflowRequest {
         private NodeType nodeType;
         private Double positionX;
         private Double positionY;
+        private JsonNode configuration;
     }
 
     @Data

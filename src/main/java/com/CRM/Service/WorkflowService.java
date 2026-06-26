@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.*;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.stream.Collectors;
 
 @Service
@@ -21,6 +22,7 @@ public class WorkflowService {
     private final WorkFlowNodeRepo workFlowNodeRepo;
     private final WorkFlowEdgeRepo workFlowEdgeRepo;
     private final UserRepo userRepo;
+    private final ObjectMapper objectMapper;
 
     /**
      * Creates a workflow with all its nodes and edges in a single transaction.
@@ -52,6 +54,9 @@ public class WorkflowService {
                 node.setNodeType(nodeDTO.getNodeType());
                 node.setPositionX(nodeDTO.getPositionX());
                 node.setPositionY(nodeDTO.getPositionY());
+                if (nodeDTO.getConfiguration() != null) {
+                    node.setConfiguration(nodeDTO.getConfiguration().toString());
+                }
                 node = workFlowNodeRepo.save(node);
                 savedNodes.add(node);
 
@@ -177,12 +182,21 @@ public class WorkflowService {
 
     private WorkflowResponse mapToResponse(WorkFlow workflow, List<WorkFlowNode> nodes, List<WorkFlowEdge> edges) {
         List<WorkflowResponse.NodeResponse> nodeResponses = nodes.stream()
-                .map(n -> WorkflowResponse.NodeResponse.builder()
-                        .id(n.getId())
-                        .nodeType(n.getNodeType())
-                        .positionX(n.getPositionX())
-                        .positionY(n.getPositionY())
-                        .build())
+                .map(n -> {
+                    WorkflowResponse.NodeResponse.NodeResponseBuilder builder = WorkflowResponse.NodeResponse.builder()
+                            .id(n.getId())
+                            .nodeType(n.getNodeType())
+                            .positionX(n.getPositionX())
+                            .positionY(n.getPositionY());
+                    if (n.getConfiguration() != null) {
+                        try {
+                            builder.configuration(objectMapper.readTree(n.getConfiguration()));
+                        } catch (Exception e) {
+                            log.warn("Failed to parse configuration for node {}", n.getId());
+                        }
+                    }
+                    return builder.build();
+                })
                 .collect(Collectors.toList());
 
         List<WorkflowResponse.EdgeResponse> edgeResponses = edges.stream()

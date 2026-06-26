@@ -7,6 +7,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -32,6 +33,7 @@ public class WorkflowResponse {
         private NodeType nodeType;
         private Double positionX;
         private Double positionY;
+        private JsonNode configuration;
     }
 
     @Data
