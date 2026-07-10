@@ -29,7 +29,7 @@ public class CreateWorkflowRequest {
         private NodeType nodeType;
         private Double positionX;
         private Double positionY;
-        private JsonNode configuration;
+        private String configuration;
     }
 
     @Data

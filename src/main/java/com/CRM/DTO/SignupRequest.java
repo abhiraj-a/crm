@@ -1,8 +1,8 @@
 package com.CRM.DTO;
 
-import lombok.Getter;
+import lombok.Data;
 
-@Getter
+@Data
 public class SignupRequest {
     private String password;
     private String email;

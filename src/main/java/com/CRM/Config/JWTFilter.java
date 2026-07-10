@@ -93,8 +93,6 @@ public  class JWTFilter extends OncePerRequestFilter {
                         .authifyerId(claims.getSubject())
                         .build();
 
-
-
                 UsernamePasswordAuthenticationToken authentication =
                         new UsernamePasswordAuthenticationToken(
                                 principal,

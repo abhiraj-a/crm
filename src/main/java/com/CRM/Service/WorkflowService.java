@@ -22,7 +22,6 @@ public class WorkflowService {
     private final WorkFlowNodeRepo workFlowNodeRepo;
     private final WorkFlowEdgeRepo workFlowEdgeRepo;
     private final UserRepo userRepo;
-    private final ObjectMapper objectMapper;
 
     /**
      * Creates a workflow with all its nodes and edges in a single transaction.
@@ -55,7 +54,7 @@ public class WorkflowService {
                 node.setPositionX(nodeDTO.getPositionX());
                 node.setPositionY(nodeDTO.getPositionY());
                 if (nodeDTO.getConfiguration() != null) {
-                    node.setConfiguration(nodeDTO.getConfiguration().toString());
+                    node.setConfiguration(nodeDTO.getConfiguration());
                 }
                 node = workFlowNodeRepo.save(node);
                 savedNodes.add(node);
@@ -189,11 +188,7 @@ public class WorkflowService {
                             .positionX(n.getPositionX())
                             .positionY(n.getPositionY());
                     if (n.getConfiguration() != null) {
-                        try {
-                            builder.configuration(objectMapper.readTree(n.getConfiguration()));
-                        } catch (Exception e) {
-                            log.warn("Failed to parse configuration for node {}", n.getId());
-                        }
+                        builder.configuration(n.getConfiguration());
                     }
                     return builder.build();
                 })

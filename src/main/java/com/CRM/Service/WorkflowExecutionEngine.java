@@ -7,6 +7,8 @@ import com.CRM.Repo.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.event.EventListener;
+import org.springframework.transaction.event.TransactionalEventListener;
+import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -44,7 +46,7 @@ public class WorkflowExecutionEngine {
     // ======================================================================
 
     @Async
-    @EventListener
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleLeadCreated(LeadCreatedEvent event) {
         Lead lead = event.getLead();
         log.info("Workflow Engine started for new lead: {}", lead.getName());
@@ -58,7 +60,7 @@ public class WorkflowExecutionEngine {
     }
 
     @Async
-    @EventListener
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleDealUpdated(DealUpdatedEvent event) {
         Deal deal = event.getDeal();
         log.info("Workflow Engine started for updated deal: {}", deal.getTitle());
@@ -72,7 +74,7 @@ public class WorkflowExecutionEngine {
     }
 
     @Async
-    @EventListener
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleTaskCompleted(TaskCompletedEvent event) {
         Task task = event.getTask();
         log.info("Workflow Engine started for completed task: {}", task.getTitle());
@@ -212,12 +214,33 @@ public class WorkflowExecutionEngine {
 
     private void handleDelayNode(WorkFlowNode node, String entityType, UUID entityId, WorkflowExecution execution) {
         try {
-            int delayHours = 24; // Default to 24 hours if no config is available
+            int delayMinutes = 0;
+            int delayHours = 0;
             int delayDays = 0;
+            int delayWeeks = 0;
+
+            if (node.getConfiguration() != null && !node.getConfiguration().isEmpty()) {
+                if (objectMapper == null) objectMapper = new ObjectMapper();
+                JsonNode config = objectMapper.readTree(node.getConfiguration());
+                
+                if (config.has("waitType") && "FIXED_DURATION".equals(config.get("waitType").asText())) {
+                    int duration = config.has("durationValue") ? config.get("durationValue").asInt() : 0;
+                    String unit = config.has("durationUnit") ? config.get("durationUnit").asText() : "hours";
+                    
+                    switch (unit.toLowerCase()) {
+                        case "minutes" -> delayMinutes = duration;
+                        case "hours" -> delayHours = duration;
+                        case "days" -> delayDays = duration;
+                        case "weeks" -> delayWeeks = duration;
+                    }
+                }
+            }
 
             LocalDateTime scheduledTime = LocalDateTime.now()
+                    .plusMinutes(delayMinutes)
                     .plusHours(delayHours)
-                    .plusDays(delayDays);
+                    .plusDays(delayDays)
+                    .plusWeeks(delayWeeks);
 
             // Pause the execution
             execution.setStatus(WorkflowExecutionStatus.PAUSED_FOR_DELAY);
@@ -247,68 +270,102 @@ public class WorkflowExecutionEngine {
     }
 
     // ======================================================================
-    // CONDITION EVALUATOR — supports Lead, Deal, and Task fields
+    // CONDITION EVALUATOR — supports dynamic Lead, Deal, and Task fields
     // ======================================================================
 
     private boolean evaluateConditionNode(WorkFlowNode node, String entityType, UUID entityId) throws Exception {
         if (node.getConfiguration() == null || node.getConfiguration().isEmpty()) {
-            return true; // Default to true if no config
+            return true;
         }
         if (objectMapper == null) {
             objectMapper = new ObjectMapper();
         }
         JsonNode config = objectMapper.readTree(node.getConfiguration());
-        if (!config.has("field") || !config.has("operator") || !config.has("value")) {
+        
+        String logic = config.has("logic") ? config.get("logic").asText().toUpperCase() : "AND";
+        JsonNode conditionsNode = config.get("conditions");
+        if (conditionsNode == null || !conditionsNode.isArray() || conditionsNode.isEmpty()) {
             return true;
         }
-        String field = config.get("field").asText();
-        String operator = config.get("operator").asText();
-        String value = config.get("value").asText();
 
+        Object entity = null;
         if ("Lead".equalsIgnoreCase(entityType)) {
-            Lead lead = leadRepo.findById(entityId).orElse(null);
-            if (lead != null) return evaluateLeadCondition(lead, field, operator, value);
+            entity = leadRepo.findById(entityId).orElse(null);
         } else if ("Deal".equalsIgnoreCase(entityType)) {
-            Deal deal = dealRepo.findById(entityId).orElse(null);
-            if (deal != null) return evaluateDealCondition(deal, field, operator, value);
+            entity = dealRepo.findById(entityId).orElse(null);
+        } else if ("Task".equalsIgnoreCase(entityType)) {
+            entity = taskRepo.findById(entityId).orElse(null);
         }
-        return false;
+
+        if (entity == null) return false;
+
+        boolean isAnd = "AND".equals(logic);
+        boolean finalResult = isAnd;
+
+        for (JsonNode cond : conditionsNode) {
+            if (!cond.has("field") || !cond.has("operator")) continue;
+            String field = cond.get("field").asText();
+            String operator = cond.get("operator").asText();
+            String expectedValue = cond.has("value") ? cond.get("value").asText() : "";
+
+            boolean result = evaluateSingleCondition(entity, field, operator, expectedValue);
+
+            if (isAnd) {
+                finalResult = finalResult && result;
+                if (!finalResult) break; // short-circuit AND
+            } else {
+                finalResult = finalResult || result;
+                if (finalResult) break; // short-circuit OR
+            }
+        }
+
+        return finalResult;
     }
 
-    private boolean evaluateLeadCondition(Lead lead, String field, String operator, String value) {
-        if ("score".equalsIgnoreCase(field)) {
-            int leadScore = lead.getScore() != null ? lead.getScore() : 0;
-            int targetValue = Integer.parseInt(value);
-            return compareNumbers(leadScore, targetValue, operator);
-        } else if ("source".equalsIgnoreCase(field)) {
-            String leadSource = lead.getSource() != null ? lead.getSource() : "";
-            return "EQUALS".equalsIgnoreCase(operator) && leadSource.equalsIgnoreCase(value);
-        } else if ("status".equalsIgnoreCase(field)) {
-            return "EQUALS".equalsIgnoreCase(operator) && lead.getStatus().name().equalsIgnoreCase(value);
+    private boolean evaluateSingleCondition(Object entity, String field, String operator, String expectedValue) {
+        try {
+            org.springframework.beans.BeanWrapper wrapper = org.springframework.beans.PropertyAccessorFactory.forBeanPropertyAccess(entity);
+            if (!wrapper.isReadableProperty(field)) return false;
+            
+            Object actualValueObj = wrapper.getPropertyValue(field);
+            if (actualValueObj == null) {
+                return "is_empty".equalsIgnoreCase(operator);
+            }
+
+            if ("is_not_empty".equalsIgnoreCase(operator)) {
+                return actualValueObj != null && !actualValueObj.toString().isEmpty();
+            }
+
+            if ("is_empty".equalsIgnoreCase(operator)) {
+                return actualValueObj.toString().isEmpty();
+            }
+
+            String actualValue = actualValueObj.toString();
+
+            return switch (operator.toLowerCase()) {
+                case "equals" -> actualValue.equalsIgnoreCase(expectedValue);
+                case "not_equals" -> !actualValue.equalsIgnoreCase(expectedValue);
+                case "contains" -> actualValue.toLowerCase().contains(expectedValue.toLowerCase());
+                case "greater_than" -> compareAsNumbers(actualValue, expectedValue) > 0;
+                case "less_than" -> compareAsNumbers(actualValue, expectedValue) < 0;
+                case "greater_than_or_equal" -> compareAsNumbers(actualValue, expectedValue) >= 0;
+                case "less_than_or_equal" -> compareAsNumbers(actualValue, expectedValue) <= 0;
+                default -> false;
+            };
+        } catch (Exception e) {
+            log.error("Error evaluating condition field: {}", field, e);
+            return false;
         }
-        return false;
     }
 
-    private boolean evaluateDealCondition(Deal deal, String field, String operator, String value) {
-        if ("value".equalsIgnoreCase(field)) {
-            double dealValue = deal.getValue() != null ? deal.getValue() : 0;
-            double targetValue = Double.parseDouble(value);
-            return compareNumbers((int) dealValue, (int) targetValue, operator);
-        } else if ("stage".equalsIgnoreCase(field)) {
-            return "EQUALS".equalsIgnoreCase(operator) && deal.getStage().name().equalsIgnoreCase(value);
+    private int compareAsNumbers(String actual, String expected) {
+        try {
+            double a = Double.parseDouble(actual);
+            double b = Double.parseDouble(expected);
+            return Double.compare(a, b);
+        } catch (NumberFormatException e) {
+            return actual.compareToIgnoreCase(expected); // Fallback to string comparison
         }
-        return false;
-    }
-
-    private boolean compareNumbers(int actual, int target, String operator) {
-        return switch (operator.toUpperCase()) {
-            case "GREATER_THAN" -> actual > target;
-            case "LESS_THAN" -> actual < target;
-            case "EQUALS" -> actual == target;
-            case "GREATER_THAN_OR_EQUAL" -> actual >= target;
-            case "LESS_THAN_OR_EQUAL" -> actual <= target;
-            default -> false;
-        };
     }
 
     // ======================================================================
@@ -337,6 +394,7 @@ public class WorkflowExecutionEngine {
 
         switch (actionType) {
             case "SCHEDULE_TASK":
+            case "CREATE_TASK":
                 handleScheduleTask(config, entityType, entityId);
                 break;
             case "SEND_EMAIL":
@@ -412,89 +470,95 @@ public class WorkflowExecutionEngine {
 
     // --- SEND_EMAIL (real implementation) ---
     private void handleSendEmail(JsonNode config, String entityType, UUID entityId) {
-        String subject = config.has("subject") ? config.get("subject").asText() : "CRM Notification";
-        String body = config.has("body") ? config.get("body").asText() : "";
+        String subjectTemplate = config.has("subject") ? config.get("subject").asText() : "CRM Notification";
+        String bodyTemplate = config.has("body") ? config.get("body").asText() : "";
+        String toTemplate = config.has("to") ? config.get("to").asText() : "";
 
+        if (config.has("template")) {
+            bodyTemplate = "Automated email triggered by workflow. " + bodyTemplate;
+        }
+
+        Object entity = null;
         if ("Lead".equals(entityType)) {
-            leadRepo.findById(entityId).ifPresent(lead -> {
-                if (lead.getEmail() != null && !lead.getEmail().isEmpty()) {
-                    // Replace template variables
-                    String resolvedBody = body
-                            .replace("{{name}}", lead.getName() != null ? lead.getName() : "")
-                            .replace("{{company}}", lead.getCompany() != null ? lead.getCompany() : "")
-                            .replace("{{email}}", lead.getEmail());
+            entity = leadRepo.findById(entityId).orElse(null);
+        } else if ("Deal".equals(entityType)) {
+            entity = dealRepo.findById(entityId).orElse(null);
+        } else if ("Task".equals(entityType)) {
+            entity = taskRepo.findById(entityId).orElse(null);
+        }
 
-                    String resolvedSubject = subject
-                            .replace("{{name}}", lead.getName() != null ? lead.getName() : "");
+        if (entity != null) {
+            String to = resolveVariables(toTemplate, entity);
+            String subject = resolveVariables(subjectTemplate, entity);
+            String body = resolveVariables(bodyTemplate, entity);
 
-                    emailService.sendEmail(lead.getEmail(), resolvedSubject, resolvedBody);
-                    log.info("Workflow Action: Sent email to {} with subject '{}'", lead.getEmail(), resolvedSubject);
-                }
-            });
+            if (to == null || to.isEmpty() || to.contains("{{")) {
+                if (entity instanceof Lead lead) to = lead.getEmail();
+            }
+
+            if (to != null && !to.isEmpty() && !to.contains("{{")) {
+                emailService.sendEmail(to, subject, body);
+                log.info("Workflow Action: Sent email to {} with subject '{}'", to, subject);
+            }
         }
     }
 
     // --- CREATE_NOTIFICATION ---
     private void handleCreateNotification(JsonNode config, String entityType, UUID entityId) {
-        String title = config.has("title") ? config.get("title").asText() : "CRM Alert";
-        String message = config.has("message") ? config.get("message").asText() : "";
+        String titleTemplate = config.has("title") ? config.get("title").asText() : "CRM Alert";
+        String messageTemplate = config.has("message") ? config.get("message").asText() : "";
+
+        Object entity = null;
+        User user = null;
+        Organization org = null;
 
         if ("Lead".equals(entityType)) {
-            leadRepo.findById(entityId).ifPresent(lead -> {
-                if (lead.getAssignedTo() != null) {
-                    Notification notification = Notification.builder()
-                            .title(title)
-                            .message(message + " — Lead: " + lead.getName())
-                            .isRead(false)
-                            .user(lead.getAssignedTo())
-                            .organization(lead.getOrganization())
-                            .createdAt(LocalDateTime.now())
-                            .build();
-                    notificationRepo.save(notification);
-                    log.info("Workflow Action: Created notification for user {}", lead.getAssignedTo().getFirstName());
-                }
-            });
+            Lead lead = leadRepo.findById(entityId).orElse(null);
+            if (lead != null) { entity = lead; user = lead.getAssignedTo(); org = lead.getOrganization(); }
         } else if ("Deal".equals(entityType)) {
-            dealRepo.findById(entityId).ifPresent(deal -> {
-                if (deal.getAssignedTo() != null) {
-                    Notification notification = Notification.builder()
-                            .title(title)
-                            .message(message + " — Deal: " + deal.getTitle())
-                            .isRead(false)
-                            .user(deal.getAssignedTo())
-                            .organization(deal.getOrganization())
-                            .createdAt(LocalDateTime.now())
-                            .build();
-                    notificationRepo.save(notification);
-                    log.info("Workflow Action: Created notification for user {}", deal.getAssignedTo().getFirstName());
-                }
-            });
+            Deal deal = dealRepo.findById(entityId).orElse(null);
+            if (deal != null) { entity = deal; user = deal.getAssignedTo(); org = deal.getOrganization(); }
         } else if ("Task".equals(entityType)) {
-            taskRepo.findById(entityId).ifPresent(task -> {
-                if (task.getAssignedTo() != null) {
-                    Notification notification = Notification.builder()
-                            .title(title)
-                            .message(message + " — Task: " + task.getTitle())
-                            .isRead(false)
-                            .user(task.getAssignedTo())
-                            .organization(task.getOrganization())
-                            .createdAt(LocalDateTime.now())
-                            .build();
-                    notificationRepo.save(notification);
-                    log.info("Workflow Action: Created notification for user {}", task.getAssignedTo().getFirstName());
-                }
-            });
+            Task task = taskRepo.findById(entityId).orElse(null);
+            if (task != null) { entity = task; user = task.getAssignedTo(); org = task.getOrganization(); }
+        }
+
+        if (user != null && org != null) {
+            String title = resolveVariables(titleTemplate, entity);
+            String message = resolveVariables(messageTemplate, entity);
+
+            Notification notification = Notification.builder()
+                    .title(title)
+                    .message(message)
+                    .isRead(false)
+                    .user(user)
+                    .organization(org)
+                    .createdAt(LocalDateTime.now())
+                    .build();
+            notificationRepo.save(notification);
+            log.info("Workflow Action: Created notification for user {}", user.getFirstName());
         }
     }
 
     // --- SCHEDULE_TASK ---
     private void handleScheduleTask(JsonNode config, String entityType, UUID entityId) {
-        String taskTitle = config.has("title") ? config.get("title").asText() : "Automated Follow-up";
-        int daysDue = config.has("daysDue") ? config.get("daysDue").asInt() : 1;
-        String taskDescription = config.has("description") ? config.get("description").asText() : "";
+        String titleTemplate = config.has("taskTitle") ? config.get("taskTitle").asText() : "Automated Follow-up";
+        int daysDue = config.has("dueDays") ? config.get("dueDays").asInt() : 1;
+        String descTemplate = config.has("description") ? config.get("description").asText() : "";
 
+        Object entity = null;
         if ("Lead".equals(entityType)) {
-            leadRepo.findById(entityId).ifPresent(lead -> {
+            entity = leadRepo.findById(entityId).orElse(null);
+        } else if ("Deal".equals(entityType)) {
+            entity = dealRepo.findById(entityId).orElse(null);
+        }
+
+        if (entity != null) {
+            String taskTitle = resolveVariables(titleTemplate, entity);
+            String taskDescription = resolveVariables(descTemplate, entity);
+
+            if ("Lead".equals(entityType)) {
+                Lead lead = (Lead) entity;
                 Task followUpTask = Task.builder()
                         .title(taskTitle)
                         .description(taskDescription.isEmpty()
@@ -510,9 +574,8 @@ public class WorkflowExecutionEngine {
 
                 taskRepo.save(followUpTask);
                 log.info("Workflow Action: Scheduled task '{}' for lead {}", taskTitle, lead.getName());
-            });
-        } else if ("Deal".equals(entityType)) {
-            dealRepo.findById(entityId).ifPresent(deal -> {
+            } else if ("Deal".equals(entityType)) {
+                Deal deal = (Deal) entity;
                 Task followUpTask = Task.builder()
                         .title(taskTitle)
                         .description(taskDescription.isEmpty()
@@ -528,13 +591,42 @@ public class WorkflowExecutionEngine {
 
                 taskRepo.save(followUpTask);
                 log.info("Workflow Action: Scheduled task '{}' for deal {}", taskTitle, deal.getTitle());
-            });
+            }
         }
     }
 
     // ======================================================================
     // HELPERS
     // ======================================================================
+
+    private String resolveVariables(String text, Object entity) {
+        if (text == null || text.isEmpty()) return text;
+        if (entity == null) return text;
+        
+        org.springframework.beans.BeanWrapper wrapper = org.springframework.beans.PropertyAccessorFactory.forBeanPropertyAccess(entity);
+        
+        java.util.regex.Pattern pattern = java.util.regex.Pattern.compile("\\{\\{.*?\\.(.*?)\\}\\}");
+        java.util.regex.Matcher matcher = pattern.matcher(text);
+        
+        StringBuffer sb = new StringBuffer();
+        while (matcher.find()) {
+            String field = matcher.group(1);
+            String replacement = "";
+            try {
+                if (wrapper.isReadableProperty(field)) {
+                    Object val = wrapper.getPropertyValue(field);
+                    replacement = val != null ? val.toString() : "";
+                } else {
+                    replacement = matcher.group(0); // keep original if not found
+                }
+            } catch (Exception e) {
+                replacement = matcher.group(0);
+            }
+            matcher.appendReplacement(sb, java.util.regex.Matcher.quoteReplacement(replacement));
+        }
+        matcher.appendTail(sb);
+        return sb.toString();
+    }
 
     private Deal findDealById(UUID dealId) {
         return dealRepo.findById(dealId).orElse(null);
