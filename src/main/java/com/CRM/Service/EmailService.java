@@ -2,35 +2,59 @@ package com.CRM.Service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.mail.SimpleMailMessage;
-import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.*;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
+
+import java.util.List;
+import java.util.Map;
 
 @Service
-@RequiredArgsConstructor
 @Slf4j
 public class EmailService {
 
-    private final JavaMailSender mailSender;
+    @Value("${brevo.api-key}")
+    private String brevoApiKey;
+
+    @Value("${brevo.sender-email:noreply@crm.app}")
+    private String senderEmail;
+
+    @Value("${brevo.sender-name:CRM App}")
+    private String senderName;
+
+    private final RestTemplate restTemplate = new RestTemplate();
+
+    private static final String BREVO_API_URL = "https://api.brevo.com/v3/smtp/email";
 
     /**
-     * Sends a plain-text email asynchronously.
-     * Runs on a separate thread so the workflow engine isn't blocked waiting for SMTP.
+     * Sends a plain-text email asynchronously via the Brevo transactional API.
      */
     @Async
     public void sendEmail(String to, String subject, String body) {
         try {
-            SimpleMailMessage message = new SimpleMailMessage();
-            message.setTo(to);
-            message.setSubject(subject);
-            message.setText(body);
-            message.setFrom("noreply@crm.app");
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            headers.set("api-key", brevoApiKey);
 
-            mailSender.send(message);
-            log.info("Email sent to {} with subject '{}'", to, subject);
+            Map<String, Object> payload = Map.of(
+                    "sender", Map.of("name", senderName, "email", senderEmail),
+                    "to", List.of(Map.of("email", to)),
+                    "subject", subject,
+                    "textContent", body
+            );
+
+            HttpEntity<Map<String, Object>> request = new HttpEntity<>(payload, headers);
+            ResponseEntity<String> response = restTemplate.postForEntity(BREVO_API_URL, request, String.class);
+
+            if (response.getStatusCode().is2xxSuccessful()) {
+                log.info("Email sent to {} with subject '{}' via Brevo", to, subject);
+            } else {
+                log.error("Brevo API returned status {} for email to {}: {}", response.getStatusCode(), to, response.getBody());
+            }
         } catch (Exception e) {
-            log.error("Failed to send email to {}: {}", to, e.getMessage());
+            log.error("Failed to send email to {} via Brevo: {}", to, e.getMessage());
         }
     }
 
@@ -40,7 +64,7 @@ public class EmailService {
      */
     @Async
     public void sendTemplatedEmail(String to, String subject, String template,
-                                    java.util.Map<String, String> variables) {
+                                    Map<String, String> variables) {
         String body = template;
         for (var entry : variables.entrySet()) {
             body = body.replace("{{" + entry.getKey() + "}}", entry.getValue());
