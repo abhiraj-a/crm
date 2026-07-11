@@ -34,6 +34,18 @@ public class LeadService {
     @Transactional
     public LeadResponse createLead(CreateLeadRequest request, String authifyerId) {
         User currentUser = getCurrentUser(authifyerId);
+
+        // Resolve the assignee: use provided userId if given, otherwise default to current user
+        User assignee = currentUser;
+        if (request.getAssignedToUserId() != null) {
+            assignee = userRepo.findById(request.getAssignedToUserId())
+                    .orElseThrow(() -> new RuntimeException("Assigned user not found"));
+            // Ensure the assignee belongs to the same organization
+            if (!assignee.getOrganization().getId().equals(currentUser.getOrganization().getId())) {
+                throw new RuntimeException("Cannot assign lead to a user in a different organization.");
+            }
+        }
+
         Lead lead = Lead.builder()
                 .name(request.getName())
                 .email(request.getEmail())
@@ -45,7 +57,7 @@ public class LeadService {
                 .score(request.getScore() != null ? request.getScore() : 0)
                 .createdAt(LocalDateTime.now())
                 .organization(currentUser.getOrganization())
-                .assignedTo(currentUser) // Default assignment
+                .assignedTo(assignee)
                 .build();
 
         Lead savedLead = leadRepo.save(lead);
@@ -111,7 +123,18 @@ public class LeadService {
         if (request.getEmail() != null) lead.setEmail(request.getEmail());
         if (request.getPhone() != null) lead.setPhone(request.getPhone());
         if (request.getCompany() != null) lead.setCompany(request.getCompany());
+        if (request.getSource() != null) lead.setSource(request.getSource());
+        if (request.getStatus() != null) lead.setStatus(request.getStatus());
         if (request.getScore() != null) lead.setScore(request.getScore());
+
+        if (request.getAssignedToUserId() != null) {
+            User assignee = userRepo.findById(request.getAssignedToUserId())
+                    .orElseThrow(() -> new RuntimeException("Assigned user not found"));
+            if (!assignee.getOrganization().getId().equals(currentUser.getOrganization().getId())) {
+                throw new RuntimeException("Cannot assign lead to a user in a different organization.");
+            }
+            lead.setAssignedTo(assignee);
+        }
 
         Lead updatedLead = leadRepo.save(lead);
         return mapToResponse(updatedLead);

@@ -7,4 +7,5 @@ import java.util.UUID;
 
 public interface TicketRepo extends JpaRepository<Ticket, UUID> {
     List<Ticket> findByLeadIdOrderByCreatedAtDesc(UUID leadId);
+    List<Ticket> findByOrganizationId(UUID organizationId);
 }
