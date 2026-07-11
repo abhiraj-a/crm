@@ -17,4 +17,8 @@ public interface TaskRepo extends JpaRepository<Task , UUID> {
 
     // Fetch tasks specifically assigned to a single user
     List<Task> findByAssignedToId(UUID userId);
+
+    List<Task> findByRelatedLeadId(UUID leadId);
+    
+    List<Task> findByRelatedDealId(UUID dealId);
 }

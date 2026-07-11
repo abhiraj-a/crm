@@ -92,16 +92,23 @@ public class WorkflowService {
     /**
      * Returns all workflows for the current user's organization.
      */
-    public List<WorkflowResponse> getAllWorkflows(String authifyerId) {
+    public List<com.CRM.DTO.WorkflowSummaryResponse> getAllWorkflows(String authifyerId) {
         User currentUser = userRepo.findByAuthifyerId(authifyerId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
         List<WorkFlow> workflows = workFlowRepo.findByOrganizationId(currentUser.getOrganization().getId());
 
         return workflows.stream().map(wf -> {
-            List<WorkFlowNode> nodes = workFlowNodeRepo.findByWorkflowId(wf.getId());
-            List<WorkFlowEdge> edges = workFlowEdgeRepo.findByWorkflowId(wf.getId());
-            return mapToResponse(wf, nodes, edges);
+            int nodeCount = workFlowNodeRepo.findByWorkflowId(wf.getId()).size();
+            return com.CRM.DTO.WorkflowSummaryResponse.builder()
+                    .id(wf.getId())
+                    .name(wf.getName())
+                    .description(wf.getDescription())
+                    .triggerType(wf.getTriggerType())
+                    .active(wf.getActive())
+                    .createdAt(wf.getCreatedAt())
+                    .nodeCount(nodeCount)
+                    .build();
         }).collect(Collectors.toList());
     }
 

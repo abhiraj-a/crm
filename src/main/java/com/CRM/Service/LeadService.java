@@ -24,6 +24,11 @@ public class LeadService {
 
     private final LeadRepo leadRepo;
     private final UserRepo userRepo;
+    private final com.CRM.Repo.TaskRepo taskRepo;
+    private final com.CRM.Repo.DealRepo dealRepo;
+    private final com.CRM.Repo.NoteRepo noteRepo;
+    private final com.CRM.Repo.InteractionRepo interactionRepo;
+    private final com.CRM.Repo.TicketRepo ticketRepo;
     private final ApplicationEventPublisher eventPublisher;
 
     @Transactional
@@ -125,6 +130,13 @@ public class LeadService {
     public void deleteLead(UUID leadId, String authifyerId) {
         User currentUser = getCurrentUser(authifyerId);
         Lead lead = getAuthorizedLead(leadId, currentUser);
+        
+        taskRepo.deleteAll(taskRepo.findByRelatedLeadId(leadId));
+        dealRepo.deleteAll(dealRepo.findByLeadId(leadId));
+        noteRepo.deleteAll(noteRepo.findByLeadIdOrderByCreatedAtDesc(leadId));
+        interactionRepo.deleteAll(interactionRepo.findByLeadIdOrderByTimestampDesc(leadId));
+        ticketRepo.deleteAll(ticketRepo.findByLeadIdOrderByCreatedAtDesc(leadId));
+
         leadRepo.delete(lead);
     }
 

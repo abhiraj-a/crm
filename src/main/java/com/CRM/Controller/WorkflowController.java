@@ -39,7 +39,7 @@ public class WorkflowController {
      * Get all workflows for the current organization.
      */
     @GetMapping
-    public ResponseEntity<List<WorkflowResponse>> getAllWorkflows(
+    public ResponseEntity<List<com.CRM.DTO.WorkflowSummaryResponse>> getAllWorkflows(
             @AuthenticationPrincipal Principal principal) {
         return ResponseEntity.ok(workflowService.getAllWorkflows(principal.getAuthifyerId()));
     }

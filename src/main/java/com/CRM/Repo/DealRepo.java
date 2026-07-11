@@ -16,4 +16,6 @@ public interface DealRepo extends JpaRepository<Deal, UUID> {
     List<Deal> findByOrganizationId(UUID organizationId);
 
     List<Deal> findByAccountId(UUID accountId);
+
+    List<Deal> findByLeadId(UUID leadId);
 }

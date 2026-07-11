@@ -27,6 +27,8 @@ public class DealService {
     private final UserRepo userRepo;
     private final LeadRepo leadRepo;
     private final AccountRepo accountRepo;
+    private final com.CRM.Repo.TaskRepo taskRepo;
+    private final com.CRM.Repo.NoteRepo noteRepo;
     private final ApplicationEventPublisher eventPublisher;
 
     private User getCurrentUser(String authifyerId) {
@@ -144,6 +146,10 @@ public class DealService {
     public void deleteDeal(UUID dealId, String authifyerId) {
         User currentUser = getCurrentUser(authifyerId);
         Deal deal = getAuthorizedDeal(dealId, currentUser);
+        
+        taskRepo.deleteAll(taskRepo.findByRelatedDealId(dealId));
+        noteRepo.deleteAll(noteRepo.findByDealIdOrderByCreatedAtDesc(dealId));
+
         dealRepo.delete(deal);
     }
 }
