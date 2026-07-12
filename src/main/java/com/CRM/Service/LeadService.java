@@ -3,10 +3,12 @@ package com.CRM.Service;
 import com.CRM.DTO.CreateLeadRequest;
 import com.CRM.DTO.LeadResponse;
 import com.CRM.DTO.UpdateLeadRequest;
+import com.CRM.Entity.Account;
 import com.CRM.Entity.Lead;
 import com.CRM.Entity.LeadStatus;
 import com.CRM.Entity.User;
 import com.CRM.Event.LeadCreatedEvent;
+import com.CRM.Repo.AccountRepo;
 import com.CRM.Repo.LeadRepo;
 import com.CRM.Repo.UserRepo;
 import lombok.RequiredArgsConstructor;
@@ -24,6 +26,7 @@ public class LeadService {
 
     private final LeadRepo leadRepo;
     private final UserRepo userRepo;
+    private final AccountRepo accountRepo;
     private final com.CRM.Repo.TaskRepo taskRepo;
     private final com.CRM.Repo.DealRepo dealRepo;
     private final com.CRM.Repo.NoteRepo noteRepo;
@@ -46,6 +49,16 @@ public class LeadService {
             }
         }
 
+        // Resolve the account affiliation if an accountId is provided
+        Account account = null;
+        if (request.getAccountId() != null) {
+            account = accountRepo.findById(request.getAccountId())
+                    .orElseThrow(() -> new RuntimeException("Account not found"));
+            if (!account.getOrganization().getId().equals(currentUser.getOrganization().getId())) {
+                throw new RuntimeException("Cannot affiliate lead with an account from a different organization.");
+            }
+        }
+
         Lead lead = Lead.builder()
                 .name(request.getName())
                 .email(request.getEmail())
@@ -58,6 +71,7 @@ public class LeadService {
                 .createdAt(LocalDateTime.now())
                 .organization(currentUser.getOrganization())
                 .assignedTo(assignee)
+                .account(account)
                 .build();
 
         Lead savedLead = leadRepo.save(lead);
@@ -97,6 +111,9 @@ public class LeadService {
                 .assignedToUserId(lead.getAssignedTo() != null ? lead.getAssignedTo().getId() : null)
                 .assignedToUserName(lead.getAssignedTo() != null ?
                         lead.getAssignedTo().getFirstName() + " " + lead.getAssignedTo().getLastName() : "Unassigned")
+                // Account affiliation info
+                .accountId(lead.getAccount() != null ? lead.getAccount().getId() : null)
+                .accountName(lead.getAccount() != null ? lead.getAccount().getCompanyName() : null)
                 .build();
     }
 
@@ -134,6 +151,15 @@ public class LeadService {
                 throw new RuntimeException("Cannot assign lead to a user in a different organization.");
             }
             lead.setAssignedTo(assignee);
+        }
+
+        if (request.getAccountId() != null) {
+            Account account = accountRepo.findById(request.getAccountId())
+                    .orElseThrow(() -> new RuntimeException("Account not found"));
+            if (!account.getOrganization().getId().equals(currentUser.getOrganization().getId())) {
+                throw new RuntimeException("Cannot affiliate lead with an account from a different organization.");
+            }
+            lead.setAccount(account);
         }
 
         Lead updatedLead = leadRepo.save(lead);

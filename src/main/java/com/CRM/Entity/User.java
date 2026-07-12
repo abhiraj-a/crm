@@ -30,6 +30,7 @@ public class User {
     @JoinColumn(name = "organization_id")
     private Organization organization;
     private LocalDateTime createdAt;
+    @Column(unique = true)
     private String authifyerId;
     private String jobTitle;
     private String phoneNumber;

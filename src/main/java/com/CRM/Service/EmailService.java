@@ -49,12 +49,12 @@ public class EmailService {
             ResponseEntity<String> response = restTemplate.postForEntity(BREVO_API_URL, request, String.class);
 
             if (response.getStatusCode().is2xxSuccessful()) {
-                log.info("Email sent to {} with subject '{}' via Brevo", to, subject);
+                log.info("Email sent to {} with subject '{}' via Brevo. Response: {}", to, subject, response.getBody());
             } else {
                 log.error("Brevo API returned status {} for email to {}: {}", response.getStatusCode(), to, response.getBody());
             }
         } catch (Exception e) {
-            log.error("Failed to send email to {} via Brevo: {}", to, e.getMessage());
+            log.error("Failed to send email to {} via Brevo", to, e);
         }
     }
 

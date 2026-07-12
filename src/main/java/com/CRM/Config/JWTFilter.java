@@ -36,7 +36,7 @@ public  class JWTFilter extends OncePerRequestFilter {
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) throws ServletException {
-        log.warn("Should not filetr");
+  //      log.warn("Should not filetr");
         String path = request.getRequestURI();
         return path.startsWith("/api/v1/signup");
     }
@@ -91,6 +91,9 @@ public  class JWTFilter extends OncePerRequestFilter {
 
                 Principal principal = Principal.builder()
                         .authifyerId(claims.getSubject())
+                        .email(claims.get("email", String.class))
+                        .firstName(claims.get("first_name", String.class))
+                        .lastName(claims.get("last_name", String.class))
                         .build();
 
                 UsernamePasswordAuthenticationToken authentication =

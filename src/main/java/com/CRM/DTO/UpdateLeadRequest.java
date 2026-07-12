@@ -19,4 +19,5 @@ public class UpdateLeadRequest {
     private LeadStatus status;
     private Integer score;
     private UUID assignedToUserId;
+    private UUID accountId;
 }

@@ -3,6 +3,7 @@ package com.CRM.Service;
 import com.CRM.DTO.*;
 import com.CRM.Entity.*;
 import com.CRM.Repo.InviteTokenRepo;
+import com.CRM.Repo.OrganisationRepo;
 import com.CRM.Repo.UserRepo;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -19,6 +20,7 @@ public class TeamService {
 
     private final UserRepo userRepo;
     private final InviteTokenRepo inviteTokenRepo;
+    private final OrganisationRepo organizationRepo;
     private final EmailService emailService;
 
     private User getCurrentUser(String authifyerId) {
@@ -217,9 +219,44 @@ public class TeamService {
                 .email(user.getEmail())
                 .role(user.getRole())
                 .jobTitle(user.getJobTitle())
+                .phoneNumber(user.getPhoneNumber())
                 .orgName(user.getOrganization().getCompanyName())
+                .orgAddress(user.getOrganization().getCompanyAddress())
+                .orgSize(user.getOrganization().getCompanySize())
                 .orgId(user.getOrganization().getId())
                 .build();
+    }
+
+    // ── Update organization details (Admin only) ──
+    @Transactional
+    public MyProfileResponse updateOrganization(UpdateOrganizationRequest request, String authifyerId) {
+        User currentUser = getCurrentUser(authifyerId);
+        requireRole(currentUser, Role.ADMIN);
+
+        Organization org = currentUser.getOrganization();
+
+        if (request.getCompanyName() != null) org.setCompanyName(request.getCompanyName());
+        if (request.getCompanyAddress() != null) org.setCompanyAddress(request.getCompanyAddress());
+        if (request.getCompanySize() != null) org.setCompanySize(request.getCompanySize());
+
+        organizationRepo.save(org);
+
+        return getMyProfile(authifyerId);
+    }
+
+    // ── Update own profile ──
+    @Transactional
+    public MyProfileResponse updateMyProfile(UpdateProfileRequest request, String authifyerId) {
+        User currentUser = getCurrentUser(authifyerId);
+
+        if (request.getFirstName() != null) currentUser.setFirstName(request.getFirstName());
+        if (request.getLastName() != null) currentUser.setLastName(request.getLastName());
+        if (request.getJobTitle() != null) currentUser.setJobTitle(request.getJobTitle());
+        if (request.getPhoneNumber() != null) currentUser.setPhoneNumber(request.getPhoneNumber());
+
+        userRepo.save(currentUser);
+
+        return getMyProfile(authifyerId);
     }
 
     // ── Mappers ──

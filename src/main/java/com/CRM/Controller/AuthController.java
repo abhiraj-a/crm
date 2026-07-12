@@ -10,6 +10,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.Map;
+
 @RestController
 @RequestMapping("/api/v1")
 @RequiredArgsConstructor
@@ -20,8 +22,13 @@ public class AuthController {
 
     @PostMapping("/signup")
     public ResponseEntity<?> signup(@RequestBody SignupRequest signupRequest) {
-        log.warn("Controller reached auth");
-        authService.signup(signupRequest);
-        return ResponseEntity.ok().build();
+        try {
+            log.info("Signup request received for email: {}", signupRequest.getEmail());
+            authService.signup(signupRequest);
+            return ResponseEntity.ok(Map.of("message", "Signup successful"));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
     }
 }
+

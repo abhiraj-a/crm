@@ -90,4 +90,24 @@ public class TeamController {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
     }
+
+    @PutMapping("/organization")
+    public ResponseEntity<?> updateOrganization(@RequestBody com.CRM.DTO.UpdateOrganizationRequest request,
+                                                 @AuthenticationPrincipal Principal principal) {
+        try {
+            return ResponseEntity.ok(teamService.updateOrganization(request, principal.getAuthifyerId()));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @PutMapping("/me")
+    public ResponseEntity<?> updateMyProfile(@RequestBody com.CRM.DTO.UpdateProfileRequest request,
+                                              @AuthenticationPrincipal Principal principal) {
+        try {
+            return ResponseEntity.ok(teamService.updateMyProfile(request, principal.getAuthifyerId()));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
 }

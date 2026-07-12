@@ -15,6 +15,9 @@ public class MyProfileResponse {
     private String email;
     private Role role;
     private String jobTitle;
+    private String phoneNumber;
     private String orgName;
+    private String orgAddress;
+    private int orgSize;
     private UUID orgId;
 }

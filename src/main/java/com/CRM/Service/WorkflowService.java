@@ -21,6 +21,9 @@ public class WorkflowService {
     private final WorkFlowRepo workFlowRepo;
     private final WorkFlowNodeRepo workFlowNodeRepo;
     private final WorkFlowEdgeRepo workFlowEdgeRepo;
+    private final WorkflowExecutionRepo workflowExecutionRepo;
+    private final ApprovalRequestRepo approvalRequestRepo;
+    private final ScheduledWorkflowActionRepo scheduledWorkflowActionRepo;
     private final UserRepo userRepo;
 
     /**
@@ -168,15 +171,37 @@ public class WorkflowService {
             throw new RuntimeException("Unauthorized access");
         }
 
-        // Delete edges first (they reference nodes)
+        // Delete child records in FK-safe order:
+        // 1. Find all executions for this workflow
+        List<WorkflowExecution> executions = workflowExecutionRepo.findByWorkflowId(workflowId);
+
+        if (!executions.isEmpty()) {
+            List<UUID> executionIds = executions.stream()
+                    .map(WorkflowExecution::getId)
+                    .collect(Collectors.toList());
+
+            // 2. Delete approval requests (reference executions)
+            for (UUID execId : executionIds) {
+                approvalRequestRepo.deleteAll(approvalRequestRepo.findByWorkflowExecutionId(execId));
+            }
+
+            // 3. Delete scheduled workflow actions (reference executions)
+            scheduledWorkflowActionRepo.deleteAll(
+                    scheduledWorkflowActionRepo.findByWorkflowExecutionIdIn(executionIds));
+
+            // 4. Delete workflow executions
+            workflowExecutionRepo.deleteAll(executions);
+        }
+
+        // 5. Delete edges (reference nodes)
         List<WorkFlowEdge> edges = workFlowEdgeRepo.findByWorkflowId(workflowId);
         workFlowEdgeRepo.deleteAll(edges);
 
-        // Delete nodes
+        // 6. Delete nodes
         List<WorkFlowNode> nodes = workFlowNodeRepo.findByWorkflowId(workflowId);
         workFlowNodeRepo.deleteAll(nodes);
 
-        // Delete workflow
+        // 7. Delete the workflow itself
         workFlowRepo.delete(workflow);
 
         log.info("Deleted workflow: {}", workflow.getName());

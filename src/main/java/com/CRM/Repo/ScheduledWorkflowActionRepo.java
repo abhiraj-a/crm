@@ -8,6 +8,6 @@ import java.util.List;
 import java.util.UUID;
 
 public interface ScheduledWorkflowActionRepo extends JpaRepository<ScheduledWorkflowAction, UUID> {
-    // Find all actions that are due and haven't been executed yet
     List<ScheduledWorkflowAction> findByExecutedFalseAndScheduledTimeBefore(LocalDateTime now);
+    List<ScheduledWorkflowAction> findByWorkflowExecutionIdIn(List<UUID> executionIds);
 }

@@ -25,4 +25,6 @@ public class LeadResponse {
     private LocalDateTime createdAt;
     private UUID assignedToUserId;
     private String assignedToUserName;
+    private UUID accountId;
+    private String accountName;
 }

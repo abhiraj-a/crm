@@ -17,4 +17,5 @@ public class CreateLeadRequest {
     private String source;
     private Integer score;
     private UUID assignedToUserId;
+    private UUID accountId;
 }

@@ -10,4 +10,5 @@ import java.util.UUID;
 public interface WorkflowExecutionRepo extends JpaRepository<WorkflowExecution, UUID> {
     List<WorkflowExecution> findByStatusAndOrganizationId(WorkflowExecutionStatus status, UUID organizationId);
     List<WorkflowExecution> findByEntityTypeAndEntityId(String entityType, UUID entityId);
+    List<WorkflowExecution> findByWorkflowId(UUID workflowId);
 }
