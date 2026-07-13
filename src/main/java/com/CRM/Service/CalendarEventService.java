@@ -7,10 +7,12 @@ import com.CRM.Entity.CalendarEvent;
 import com.CRM.Entity.Deal;
 import com.CRM.Entity.Lead;
 import com.CRM.Entity.User;
+import com.CRM.Entity.Contact;
 import com.CRM.Repo.CalendarEventRepo;
 import com.CRM.Repo.DealRepo;
 import com.CRM.Repo.LeadRepo;
 import com.CRM.Repo.UserRepo;
+import com.CRM.Repo.ContactRepo;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,12 +23,14 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
-public class CalendarEventService {
+public class
+CalendarEventService {
 
     private final CalendarEventRepo calendarEventRepo;
     private final UserRepo userRepo;
     private final LeadRepo leadRepo;
     private final DealRepo dealRepo;
+    private final ContactRepo contactRepo;
 
     public List<CalendarEventResponse> getEventsForOrg(String authifyerId) {
         User user = userRepo.findByAuthifyerId(authifyerId)
@@ -67,6 +71,12 @@ public class CalendarEventService {
             Deal deal = dealRepo.findById(request.getRelatedDealId())
                     .orElseThrow(() -> new RuntimeException("Deal not found"));
             event.setRelatedDeal(deal);
+        }
+
+        if (request.getRelatedContactId() != null) {
+            Contact contact = contactRepo.findById(request.getRelatedContactId())
+                    .orElseThrow(() -> new RuntimeException("Contact not found"));
+            event.setRelatedContact(contact);
         }
 
         CalendarEvent saved = calendarEventRepo.save(event);
@@ -115,6 +125,14 @@ public class CalendarEventService {
             event.setRelatedDeal(null);
         }
 
+        if (request.getRelatedContactId() != null) {
+            Contact contact = contactRepo.findById(request.getRelatedContactId())
+                    .orElseThrow(() -> new RuntimeException("Contact not found"));
+            event.setRelatedContact(contact);
+        } else {
+            event.setRelatedContact(null);
+        }
+
         CalendarEvent saved = calendarEventRepo.save(event);
         return mapToResponse(saved);
     }
@@ -149,6 +167,8 @@ public class CalendarEventService {
                 .relatedLeadName(event.getRelatedLead() != null ? event.getRelatedLead().getName() : null)
                 .relatedDealId(event.getRelatedDeal() != null ? event.getRelatedDeal().getId() : null)
                 .relatedDealTitle(event.getRelatedDeal() != null ? event.getRelatedDeal().getTitle() : null)
+                .relatedContactId(event.getRelatedContact() != null ? event.getRelatedContact().getId() : null)
+                .relatedContactName(event.getRelatedContact() != null ? event.getRelatedContact().getFirstName() + " " + event.getRelatedContact().getLastName() : null)
                 .build();
     }
 }

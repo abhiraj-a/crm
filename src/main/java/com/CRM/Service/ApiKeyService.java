@@ -35,6 +35,10 @@ public class ApiKeyService {
         User user = userRepo.findByAuthifyerId(authifyerId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
+        if (user.getRole() != com.CRM.Entity.Role.ADMIN) {
+            throw new RuntimeException("Only admins can manage API keys");
+        }
+
         // Generate 48 random bytes and base64 encode them for a secure key
         SecureRandom random = new SecureRandom();
         byte[] keyBytes = new byte[48];
@@ -66,6 +70,10 @@ public class ApiKeyService {
         User user = userRepo.findByAuthifyerId(authifyerId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
+        if (user.getRole() != com.CRM.Entity.Role.ADMIN) {
+            throw new RuntimeException("Only admins can manage API keys");
+        }
+
         return apiKeyRepo.findByOrganizationIdAndActiveTrue(user.getOrganization().getId())
                 .stream()
                 .map(this::mapToResponse)
@@ -76,6 +84,10 @@ public class ApiKeyService {
     public void revokeKey(UUID keyId, String authifyerId) {
         User user = userRepo.findByAuthifyerId(authifyerId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
+
+        if (user.getRole() != com.CRM.Entity.Role.ADMIN) {
+            throw new RuntimeException("Only admins can manage API keys");
+        }
 
         ApiKey apiKey = apiKeyRepo.findById(keyId)
                 .orElseThrow(() -> new RuntimeException("API Key not found"));

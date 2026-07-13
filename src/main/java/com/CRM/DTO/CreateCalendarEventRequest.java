@@ -23,4 +23,5 @@ public class CreateCalendarEventRequest {
     private UUID assignedToUserId;
     private UUID relatedLeadId;
     private UUID relatedDealId;
+    private UUID relatedContactId;
 }

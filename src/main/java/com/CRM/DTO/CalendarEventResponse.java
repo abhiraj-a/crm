@@ -30,4 +30,7 @@ public class CalendarEventResponse {
     
     private UUID relatedDealId;
     private String relatedDealTitle;
+
+    private UUID relatedContactId;
+    private String relatedContactName;
 }

@@ -50,6 +50,10 @@ public class CalendarEvent {
     private Deal relatedDeal;
 
     @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "related_contact_id")
+    private Contact relatedContact;
+
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "organization_id", nullable = false)
     private Organization organization;
 

@@ -1,0 +1,22 @@
+package com.CRM.DTO;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+import java.util.UUID;
+
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class UpdateContactRequest {
+    private String firstName;
+    private String lastName;
+    private String email;
+    private String phone;
+    private String jobTitle;
+    private UUID accountId;
+    private UUID assignedToUserId;
+}
