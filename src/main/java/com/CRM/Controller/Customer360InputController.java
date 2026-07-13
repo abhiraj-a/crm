@@ -39,33 +39,6 @@ public class Customer360InputController {
     }
 
     /**
-     * Create a support ticket for a customer.
-     */
-    @PostMapping("/tickets")
-    public ResponseEntity<?> createTicket(@RequestBody CreateTicketRequest request,
-                                          @AuthenticationPrincipal Principal principal) {
-        try {
-            return ResponseEntity.ok(ticketService.createTicket(request, principal.getAuthifyerId()));
-        } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
-        }
-    }
-
-    /**
-     * Update the status of an existing ticket.
-     */
-    @PatchMapping("/tickets/{ticketId}/status")
-    public ResponseEntity<?> updateTicketStatus(@PathVariable UUID ticketId,
-                                                @RequestParam TicketStatus status,
-                                                @AuthenticationPrincipal Principal principal) {
-        try {
-            return ResponseEntity.ok(ticketService.updateTicketStatus(ticketId, status, principal.getAuthifyerId()));
-        } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
-        }
-    }
-
-    /**
      * Add a note to a lead and/or deal.
      */
     @PostMapping("/notes")
