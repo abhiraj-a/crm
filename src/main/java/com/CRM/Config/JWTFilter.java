@@ -38,7 +38,7 @@ public  class JWTFilter extends OncePerRequestFilter {
     protected boolean shouldNotFilter(HttpServletRequest request) throws ServletException {
   //      log.warn("Should not filetr");
         String path = request.getRequestURI();
-        return path.startsWith("/api/v1/signup");
+        return path.startsWith("/api/v1/signup") || path.startsWith("/api/v1/external");
     }
 
 
@@ -87,7 +87,7 @@ public  class JWTFilter extends OncePerRequestFilter {
                         .parseSignedClaims(token)
                         .getPayload();
 
-            log.info("Setting security context for Authifyer Id : " + claims.getSubject());
+        //    log.info("Setting security context for Authifyer Id : " + claims.getSubject());
 
                 Principal principal = Principal.builder()
                         .authifyerId(claims.getSubject())
@@ -103,7 +103,7 @@ public  class JWTFilter extends OncePerRequestFilter {
                                 Collections.emptyList()
                         );
 
-                log.warn("Setting security context - " + authentication);
+          //      log.warn("Setting security context - " + authentication);
 
                 SecurityContextHolder.getContext()
                         .setAuthentication(authentication);
