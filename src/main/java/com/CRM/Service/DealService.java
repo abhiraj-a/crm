@@ -70,6 +70,9 @@ public class DealService {
         Lead lead = request.getLeadId() != null ?
                 leadRepo.findById(request.getLeadId()).orElse(null) : null;
 
+        if (request.getAssignedToUserId() != null && currentUser.getRole() == com.CRM.Entity.Role.SALES_REP && !request.getAssignedToUserId().equals(currentUser.getId())) {
+            throw new RuntimeException("Sales Reps cannot assign deals to other users.");
+        }
         User assignee = request.getAssignedToUserId() != null ?
                 userRepo.findById(request.getAssignedToUserId()).orElse(currentUser) : currentUser;
 
@@ -115,6 +118,9 @@ public class DealService {
         if (request.getExpectedCloseDate() != null) deal.setExpectedCloseDate(request.getExpectedCloseDate());
 
         if (request.getAssignedToUserId() != null) {
+            if (currentUser.getRole() == com.CRM.Entity.Role.SALES_REP && (deal.getAssignedTo() == null || !request.getAssignedToUserId().equals(deal.getAssignedTo().getId()))) {
+                throw new RuntimeException("Sales Reps cannot assign deals to other users.");
+            }
             userRepo.findById(request.getAssignedToUserId()).ifPresent(deal::setAssignedTo);
         }
         if (request.getLeadId() != null) {

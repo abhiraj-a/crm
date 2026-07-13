@@ -3,6 +3,7 @@ package com.CRM.Controller;
 import com.CRM.DTO.CreateLeadRequest;
 import com.CRM.DTO.LeadResponse;
 import com.CRM.DTO.UpdateLeadRequest;
+import com.CRM.DTO.BulkLeadRequests;
 import com.CRM.Entity.Lead;
 import com.CRM.Entity.LeadStatus;
 import com.CRM.Service.LeadService;
@@ -70,6 +71,46 @@ public class LeadController {
         try {
             leadService.deleteLead(leadId, principal.getAuthifyerId());
             return ResponseEntity.ok(Map.of("message", "Lead deleted successfully"));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @PostMapping("/bulk/delete")
+    public ResponseEntity<?> bulkDeleteLeads(@RequestBody BulkLeadRequests.BulkDeleteRequest request, @AuthenticationPrincipal Principal principal) {
+        try {
+            leadService.bulkDelete(request.getLeadIds(), principal.getAuthifyerId());
+            return ResponseEntity.ok(Map.of("message", "Leads deleted successfully"));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @PostMapping("/bulk/assign")
+    public ResponseEntity<?> bulkAssignLeads(@RequestBody BulkLeadRequests.BulkAssignRequest request, @AuthenticationPrincipal Principal principal) {
+        try {
+            leadService.bulkAssign(request.getLeadIds(), request.getAssigneeId(), principal.getAuthifyerId());
+            return ResponseEntity.ok(Map.of("message", "Leads assigned successfully"));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @PostMapping("/bulk/email")
+    public ResponseEntity<?> bulkEmailLeads(@RequestBody BulkLeadRequests.BulkEmailRequest request, @AuthenticationPrincipal Principal principal) {
+        try {
+            leadService.bulkEmail(request.getLeadIds(), request.getSubject(), request.getBody(), principal.getAuthifyerId());
+            return ResponseEntity.ok(Map.of("message", "Bulk email initiated"));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @PostMapping("/bulk/merge")
+    public ResponseEntity<?> mergeLeads(@RequestBody BulkLeadRequests.MergeLeadsRequest request, @AuthenticationPrincipal Principal principal) {
+        try {
+            leadService.mergeLeads(request.getPrimaryLeadId(), request.getSecondaryLeadIds(), principal.getAuthifyerId());
+            return ResponseEntity.ok(Map.of("message", "Leads merged successfully"));
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }

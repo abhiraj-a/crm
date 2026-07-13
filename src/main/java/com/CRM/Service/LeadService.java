@@ -33,6 +33,7 @@ public class LeadService {
     private final com.CRM.Repo.InteractionRepo interactionRepo;
     private final com.CRM.Repo.TicketRepo ticketRepo;
     private final ApplicationEventPublisher eventPublisher;
+    private final EmailService emailService;
 
     @Transactional
     public LeadResponse createLead(CreateLeadRequest request, String authifyerId) {
@@ -41,6 +42,9 @@ public class LeadService {
         // Resolve the assignee: use provided userId if given, otherwise default to current user
         User assignee = currentUser;
         if (request.getAssignedToUserId() != null) {
+            if (currentUser.getRole() == com.CRM.Entity.Role.SALES_REP && !request.getAssignedToUserId().equals(currentUser.getId())) {
+                throw new RuntimeException("Sales Reps cannot assign leads to other users.");
+            }
             assignee = userRepo.findById(request.getAssignedToUserId())
                     .orElseThrow(() -> new RuntimeException("Assigned user not found"));
             // Ensure the assignee belongs to the same organization
@@ -145,6 +149,9 @@ public class LeadService {
         if (request.getScore() != null) lead.setScore(request.getScore());
 
         if (request.getAssignedToUserId() != null) {
+            if (currentUser.getRole() == com.CRM.Entity.Role.SALES_REP && (lead.getAssignedTo() == null || !request.getAssignedToUserId().equals(lead.getAssignedTo().getId()))) {
+                throw new RuntimeException("Sales Reps cannot assign leads to other users.");
+            }
             User assignee = userRepo.findById(request.getAssignedToUserId())
                     .orElseThrow(() -> new RuntimeException("Assigned user not found"));
             if (!assignee.getOrganization().getId().equals(currentUser.getOrganization().getId())) {
@@ -189,4 +196,84 @@ public class LeadService {
         leadRepo.delete(lead);
     }
 
+    @Transactional
+    public void bulkDelete(List<UUID> leadIds, String authifyerId) {
+        for (UUID id : leadIds) {
+            deleteLead(id, authifyerId);
+        }
+    }
+
+    @Transactional
+    public void bulkAssign(List<UUID> leadIds, UUID assigneeId, String authifyerId) {
+        User currentUser = getCurrentUser(authifyerId);
+        if (currentUser.getRole() == com.CRM.Entity.Role.SALES_REP) {
+            throw new RuntimeException("Sales Reps cannot bulk assign leads.");
+        }
+        User assignee = userRepo.findById(assigneeId)
+                .orElseThrow(() -> new RuntimeException("Assigned user not found"));
+        if (!assignee.getOrganization().getId().equals(currentUser.getOrganization().getId())) {
+            throw new RuntimeException("Cannot assign lead to a user in a different organization.");
+        }
+
+        for (UUID id : leadIds) {
+            Lead lead = getAuthorizedLead(id, currentUser);
+            lead.setAssignedTo(assignee);
+            leadRepo.save(lead);
+        }
+    }
+
+    public void bulkEmail(List<UUID> leadIds, String subject, String body, String authifyerId) {
+        User currentUser = getCurrentUser(authifyerId);
+        for (UUID id : leadIds) {
+            Lead lead = getAuthorizedLead(id, currentUser);
+            if (lead.getEmail() != null && !lead.getEmail().isEmpty()) {
+                emailService.sendEmail(lead.getEmail(), subject, body);
+            }
+        }
+    }
+
+    @Transactional
+    public void mergeLeads(UUID primaryLeadId, List<UUID> secondaryLeadIds, String authifyerId) {
+        User currentUser = getCurrentUser(authifyerId);
+        Lead primaryLead = getAuthorizedLead(primaryLeadId, currentUser);
+
+        for (UUID secondaryId : secondaryLeadIds) {
+            if (secondaryId.equals(primaryLeadId)) continue;
+            
+            Lead secondaryLead = getAuthorizedLead(secondaryId, currentUser);
+
+            // Reassign tasks
+            taskRepo.findByRelatedLeadId(secondaryId).forEach(task -> {
+                task.setRelatedLead(primaryLead);
+                taskRepo.save(task);
+            });
+
+            // Reassign deals
+            dealRepo.findByLeadId(secondaryId).forEach(deal -> {
+                deal.setLead(primaryLead);
+                dealRepo.save(deal);
+            });
+
+            // Reassign notes
+            noteRepo.findByLeadIdOrderByCreatedAtDesc(secondaryId).forEach(note -> {
+                note.setLead(primaryLead);
+                noteRepo.save(note);
+            });
+
+            // Reassign interactions
+            interactionRepo.findByLeadIdOrderByTimestampDesc(secondaryId).forEach(interaction -> {
+                interaction.setLead(primaryLead);
+                interactionRepo.save(interaction);
+            });
+
+            // Reassign tickets
+            ticketRepo.findByLeadIdOrderByCreatedAtDesc(secondaryId).forEach(ticket -> {
+                ticket.setLead(primaryLead);
+                ticketRepo.save(ticket);
+            });
+
+            // Delete secondary lead
+            leadRepo.delete(secondaryLead);
+        }
+    }
 }
