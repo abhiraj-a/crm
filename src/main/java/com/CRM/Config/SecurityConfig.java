@@ -33,6 +33,7 @@ public class SecurityConfig{
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers("/api/v1/signup").permitAll()
                         .requestMatchers("/api/v1/external/**").permitAll()
+                        .requestMatchers("/api/v1/webhooks/**", "/api/meta/callback").permitAll()
                         .anyRequest().authenticated())
                 .csrf(AbstractHttpConfigurer::disable)
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
