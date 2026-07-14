@@ -27,6 +27,13 @@ public class Account {
     private String employeeCount;
     private String annualRevenue;
 
+    private String phone;
+    private String email;
+    private String pincode;
+    
+    @Column(columnDefinition = "TEXT")
+    private String address;
+
     @Column(columnDefinition = "TEXT")
     private String description;
 

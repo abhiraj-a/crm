@@ -16,5 +16,9 @@ public class CreateAccountRequest {
     private String employeeCount;
     private String annualRevenue;
     private String description;
+    private String phone;
+    private String email;
+    private String pincode;
+    private String address;
     private UUID parentAccountId;
 }

@@ -27,6 +27,12 @@ public class MetaAuthService {
     @Value("${meta.redirect.uri:}")
     private String redirectUri;
 
+    public String getAuthUrl(String state) {
+        String scope = "pages_show_list,leads_retrieval,pages_read_engagement,pages_manage_ads";
+        return String.format("https://www.facebook.com/v20.0/dialog/oauth?client_id=%s&redirect_uri=%s&scope=%s&state=%s&response_type=code",
+                appId, redirectUri, scope, state);
+    }
+
     public void processMetaCallback(String code, String state) {
         Long userId = Long.valueOf(state);
 

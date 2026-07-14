@@ -15,6 +15,11 @@ public class MetaAuthController {
 
     private final MetaAuthService metaAuthService;
 
+    @GetMapping("/auth-url")
+    public ResponseEntity<String> getAuthUrl(@RequestParam("state") String state) {
+        return ResponseEntity.ok(metaAuthService.getAuthUrl(state));
+    }
+
     @GetMapping("/callback")
     public ResponseEntity<String> handleMetaCallback(
             @RequestParam("code") String code,

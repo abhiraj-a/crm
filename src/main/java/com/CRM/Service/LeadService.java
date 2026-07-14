@@ -38,6 +38,7 @@ public class LeadService {
     private final com.CRM.Repo.InteractionRepo interactionRepo;
     private final com.CRM.Repo.TicketRepo ticketRepo;
     private final com.CRM.Repo.ContactRepo contactRepo;
+    private final com.CRM.Repo.CalendarEventRepo calendarEventRepo;
     private final ApplicationEventPublisher eventPublisher;
     private final EmailService emailService;
 
@@ -198,6 +199,7 @@ public class LeadService {
         noteRepo.deleteAll(noteRepo.findByLeadIdOrderByCreatedAtDesc(leadId));
         interactionRepo.deleteAll(interactionRepo.findByLeadIdOrderByTimestampDesc(leadId));
         ticketRepo.deleteAll(ticketRepo.findByLeadIdOrderByCreatedAtDesc(leadId));
+        calendarEventRepo.deleteAll(calendarEventRepo.findByRelatedLeadId(leadId));
 
         leadRepo.delete(lead);
     }
@@ -278,6 +280,12 @@ public class LeadService {
                 ticketRepo.save(ticket);
             });
 
+            // Reassign calendar events
+            calendarEventRepo.findByRelatedLeadId(secondaryId).forEach(event -> {
+                event.setRelatedLead(primaryLead);
+                calendarEventRepo.save(event);
+            });
+
             // Delete secondary lead
             leadRepo.delete(secondaryLead);
         }
@@ -299,6 +307,21 @@ public class LeadService {
             if (!account.getOrganization().getId().equals(currentUser.getOrganization().getId())) {
                 throw new RuntimeException("Cannot affiliate with an account from a different organization.");
             }
+        } else if (request.getNewAccountDetails() != null) {
+            account = new Account();
+            account.setCompanyName(request.getNewAccountDetails().getCompanyName());
+            account.setIndustry(request.getNewAccountDetails().getIndustry());
+            account.setWebsite(request.getNewAccountDetails().getWebsite());
+            account.setEmployeeCount(request.getNewAccountDetails().getEmployeeCount());
+            account.setAnnualRevenue(request.getNewAccountDetails().getAnnualRevenue());
+            account.setDescription(request.getNewAccountDetails().getDescription());
+            account.setPhone(request.getNewAccountDetails().getPhone());
+            account.setEmail(request.getNewAccountDetails().getEmail());
+            account.setPincode(request.getNewAccountDetails().getPincode());
+            account.setAddress(request.getNewAccountDetails().getAddress());
+            account.setOrganization(currentUser.getOrganization());
+            account.setCreatedAt(LocalDateTime.now());
+            account = accountRepo.save(account);
         } else if (request.getNewAccountName() != null && !request.getNewAccountName().isBlank()) {
             account = new Account();
             account.setCompanyName(request.getNewAccountName());

@@ -15,4 +15,6 @@ public interface CalendarEventRepo extends JpaRepository<CalendarEvent, UUID> {
     
     List<CalendarEvent> findByOrganizationIdAndStartTimeBetweenOrderByStartTimeAsc(
             UUID organizationId, LocalDateTime start, LocalDateTime end);
+            
+    List<CalendarEvent> findByRelatedLeadId(UUID leadId);
 }

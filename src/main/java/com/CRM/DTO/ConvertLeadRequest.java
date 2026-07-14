@@ -14,6 +14,7 @@ import java.util.UUID;
 public class ConvertLeadRequest {
     private UUID accountId;
     private String newAccountName;
+    private CreateAccountRequest newAccountDetails;
     private boolean createDeal;
     private String dealName;
     private Double dealValue;
