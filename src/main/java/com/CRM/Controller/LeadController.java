@@ -4,6 +4,8 @@ import com.CRM.DTO.CreateLeadRequest;
 import com.CRM.DTO.LeadResponse;
 import com.CRM.DTO.UpdateLeadRequest;
 import com.CRM.DTO.BulkLeadRequests;
+import com.CRM.DTO.ConvertLeadRequest;
+import com.CRM.DTO.ConvertLeadResponse;
 import com.CRM.Entity.Lead;
 import com.CRM.Entity.LeadStatus;
 import com.CRM.Service.LeadService;
@@ -111,6 +113,16 @@ public class LeadController {
         try {
             leadService.mergeLeads(request.getPrimaryLeadId(), request.getSecondaryLeadIds(), principal.getAuthifyerId());
             return ResponseEntity.ok(Map.of("message", "Leads merged successfully"));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @PostMapping("/{leadId}/convert")
+    public ResponseEntity<?> convertLead(@PathVariable UUID leadId, @RequestBody ConvertLeadRequest request, @AuthenticationPrincipal Principal principal) {
+        try {
+            ConvertLeadResponse response = leadService.convertLead(leadId, request, principal.getAuthifyerId());
+            return ResponseEntity.ok(response);
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }

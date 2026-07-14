@@ -3,7 +3,12 @@ package com.CRM.Service;
 import com.CRM.DTO.CreateLeadRequest;
 import com.CRM.DTO.LeadResponse;
 import com.CRM.DTO.UpdateLeadRequest;
+import com.CRM.DTO.ConvertLeadRequest;
+import com.CRM.DTO.ConvertLeadResponse;
 import com.CRM.Entity.Account;
+import com.CRM.Entity.Contact;
+import com.CRM.Entity.Deal;
+import com.CRM.Entity.DealStage;
 import com.CRM.Entity.Lead;
 import com.CRM.Entity.LeadStatus;
 import com.CRM.Entity.User;
@@ -32,6 +37,7 @@ public class LeadService {
     private final com.CRM.Repo.NoteRepo noteRepo;
     private final com.CRM.Repo.InteractionRepo interactionRepo;
     private final com.CRM.Repo.TicketRepo ticketRepo;
+    private final com.CRM.Repo.ContactRepo contactRepo;
     private final ApplicationEventPublisher eventPublisher;
     private final EmailService emailService;
 
@@ -275,5 +281,73 @@ public class LeadService {
             // Delete secondary lead
             leadRepo.delete(secondaryLead);
         }
+    }
+
+    @Transactional
+    public ConvertLeadResponse convertLead(UUID leadId, ConvertLeadRequest request, String authifyerId) {
+        User currentUser = getCurrentUser(authifyerId);
+        Lead lead = getAuthorizedLead(leadId, currentUser);
+        
+        if (lead.getStatus() == LeadStatus.CONVERTED) {
+            throw new RuntimeException("Lead is already converted");
+        }
+
+        Account account = null;
+        if (request.getAccountId() != null) {
+            account = accountRepo.findById(request.getAccountId())
+                    .orElseThrow(() -> new RuntimeException("Account not found"));
+            if (!account.getOrganization().getId().equals(currentUser.getOrganization().getId())) {
+                throw new RuntimeException("Cannot affiliate with an account from a different organization.");
+            }
+        } else if (request.getNewAccountName() != null && !request.getNewAccountName().isBlank()) {
+            account = new Account();
+            account.setCompanyName(request.getNewAccountName());
+            account.setOrganization(currentUser.getOrganization());
+            account.setCreatedAt(LocalDateTime.now());
+            account = accountRepo.save(account);
+        }
+
+        // Split name into first and last name
+        String[] nameParts = lead.getName().split(" ", 2);
+        String firstName = nameParts[0];
+        String lastName = nameParts.length > 1 ? nameParts[1] : "";
+
+        Contact contact = Contact.builder()
+                .firstName(firstName)
+                .lastName(lastName)
+                .email(lead.getEmail())
+                .phone(lead.getPhone())
+                .jobTitle(lead.getCompany())
+                .account(account)
+                .organization(currentUser.getOrganization())
+                .assignedTo(lead.getAssignedTo())
+                .createdAt(LocalDateTime.now())
+                .build();
+        
+        contact = contactRepo.save(contact);
+
+        Deal deal = null;
+        if (request.isCreateDeal()) {
+            deal = new Deal();
+            deal.setTitle(request.getDealName() != null && !request.getDealName().isBlank() ? request.getDealName() : lead.getName() + " Deal");
+            deal.setValue(request.getDealValue() != null ? request.getDealValue() : 0.0);
+            deal.setStage(DealStage.PROSPECTING);
+            deal.setAssignedTo(lead.getAssignedTo());
+            deal.setOrganization(currentUser.getOrganization());
+            deal.setCreatedAt(LocalDateTime.now());
+            deal.setAccount(account);
+            // Link the deal to the lead? (Deal has lead reference in DB)
+            // deal.setLead(lead); // actually, maybe not necessary if it's converted, but we can set it.
+            deal = dealRepo.save(deal);
+        }
+
+        lead.setStatus(LeadStatus.CONVERTED);
+        leadRepo.save(lead);
+
+        return ConvertLeadResponse.builder()
+                .contactId(contact.getId())
+                .accountId(account != null ? account.getId() : null)
+                .dealId(deal != null ? deal.getId() : null)
+                .build();
     }
 }
