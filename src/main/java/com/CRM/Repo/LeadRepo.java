@@ -5,6 +5,7 @@ import com.CRM.Entity.LeadStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 public interface LeadRepo extends JpaRepository<Lead, UUID> {
@@ -13,4 +14,5 @@ public interface LeadRepo extends JpaRepository<Lead, UUID> {
     List<Lead> findTop5ByOrganizationIdOrderByScoreDesc(UUID organizationId);
 
     List<Lead> findByAccountId(UUID accountId);
+    Optional<Lead> findByExternalId(String externalId);
 }

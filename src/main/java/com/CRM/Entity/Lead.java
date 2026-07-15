@@ -41,6 +41,9 @@ public class Lead {
     @ManyToOne
     private Organization organization;
 
+    @Column(name = "external_id", unique = true)
+    private String externalId;
+
     private LocalDateTime createdAt;
 
     @ManyToOne(fetch = FetchType.LAZY)
