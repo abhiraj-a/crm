@@ -70,7 +70,7 @@ public  class JWTFilter extends OncePerRequestFilter {
             String payloadJson = new String(Base64.getUrlDecoder().decode(chunks[1]));
             JsonNode payload = mapper.readTree(payloadJson);
             String authifyerId = payload.get("sub").asText();
-            log.warn("Authifyer Id : " + authifyerId);
+ //           log.warn("Authifyer Id : " + authifyerId);
             PublicKey publicKey =
                     null;
             try {
