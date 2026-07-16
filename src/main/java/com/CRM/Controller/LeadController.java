@@ -6,9 +6,9 @@ import com.CRM.DTO.UpdateLeadRequest;
 import com.CRM.DTO.BulkLeadRequests;
 import com.CRM.DTO.ConvertLeadRequest;
 import com.CRM.DTO.ConvertLeadResponse;
-import com.CRM.Entity.Lead;
 import com.CRM.Entity.LeadStatus;
 import com.CRM.Service.LeadService;
+import com.CRM.Service.TicketService;
 import com.CRM.Util.Principal;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -25,6 +25,7 @@ import java.util.UUID;
 public class LeadController {
 
     private final LeadService leadService;
+    private final TicketService ticketService;
 
     @PostMapping
     public ResponseEntity<?> createLead(@RequestBody CreateLeadRequest request, @AuthenticationPrincipal Principal principal) {
@@ -39,6 +40,11 @@ public class LeadController {
     @GetMapping
     public ResponseEntity<List<LeadResponse>> getAllLeads(@AuthenticationPrincipal Principal principal) {
         return ResponseEntity.ok(leadService.getAllLeads(principal.getAuthifyerId()));
+    }
+
+    @GetMapping("/{leadId}/tickets")
+    public ResponseEntity<?> getLeadTickets(@PathVariable UUID leadId, @AuthenticationPrincipal Principal principal) {
+        return ResponseEntity.ok(ticketService.getTicketsByLeadId(leadId, principal.getAuthifyerId()));
     }
 
     @GetMapping("/{leadId}")

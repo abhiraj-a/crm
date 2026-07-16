@@ -20,6 +20,7 @@ public class TicketResponse {
     private String description;
     private TicketStatus status;
     private TicketPriority priority;
+    private com.CRM.Entity.TicketSource source;
     
     private UUID assignedToUserId;
     private String assignedToUserName;

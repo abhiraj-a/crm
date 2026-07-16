@@ -5,13 +5,13 @@ import com.CRM.DTO.TicketResponse;
 import com.CRM.Entity.TicketStatus;
 import com.CRM.Service.TicketService;
 import com.CRM.Util.Principal;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 
 @RestController
@@ -26,35 +26,28 @@ public class TicketController {
         return ResponseEntity.ok(ticketService.getTicketsForOrg(principal.getAuthifyerId()));
     }
 
+    @GetMapping("/{ticketId}")
+    public ResponseEntity<TicketResponse> getTicketById(@PathVariable UUID ticketId, @AuthenticationPrincipal Principal principal) {
+        return ResponseEntity.ok(ticketService.getTicketById(ticketId, principal.getAuthifyerId()));
+    }
+
     @PostMapping
-    public ResponseEntity<?> createTicket(@RequestBody CreateTicketRequest request,
+    public ResponseEntity<TicketResponse> createTicket(@Valid @RequestBody CreateTicketRequest request,
                                           @AuthenticationPrincipal Principal principal) {
-        try {
-            return ResponseEntity.ok(ticketService.createTicket(request, principal.getAuthifyerId()));
-        } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
-        }
+        return ResponseEntity.ok(ticketService.createTicket(request, principal.getAuthifyerId()));
     }
 
     @PatchMapping("/{ticketId}/status")
-    public ResponseEntity<?> updateTicketStatus(@PathVariable UUID ticketId,
+    public ResponseEntity<TicketResponse> updateTicketStatus(@PathVariable UUID ticketId,
                                                 @RequestParam TicketStatus status,
                                                 @AuthenticationPrincipal Principal principal) {
-        try {
-            return ResponseEntity.ok(ticketService.updateTicketStatus(ticketId, status, principal.getAuthifyerId()));
-        } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
-        }
+        return ResponseEntity.ok(ticketService.updateTicketStatus(ticketId, status, principal.getAuthifyerId()));
     }
 
     @PatchMapping("/{ticketId}/assign")
-    public ResponseEntity<?> assignTicket(@PathVariable UUID ticketId,
+    public ResponseEntity<TicketResponse> assignTicket(@PathVariable UUID ticketId,
                                           @RequestParam UUID assignedToUserId,
                                           @AuthenticationPrincipal Principal principal) {
-        try {
-            return ResponseEntity.ok(ticketService.assignTicket(ticketId, assignedToUserId, principal.getAuthifyerId()));
-        } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
-        }
+        return ResponseEntity.ok(ticketService.assignTicket(ticketId, assignedToUserId, principal.getAuthifyerId()));
     }
 }

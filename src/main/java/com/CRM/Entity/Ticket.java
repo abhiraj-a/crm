@@ -32,6 +32,9 @@ public class Ticket {
     @Enumerated(EnumType.STRING)
     private TicketPriority priority;
 
+    @Enumerated(EnumType.STRING)
+    private TicketSource source;
+
     @ManyToOne
     private User assignedTo;
 
