@@ -49,7 +49,7 @@ public class SecurityConfig{
         configuration.setAllowedHeaders(List.of("*"));
         configuration.setAllowedOriginPatterns(List.of("*"));
         configuration.setAllowedMethods(
-                List.of("GET", "POST", "PUT", "DELETE", "OPTIONS")
+                List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
         );
         UrlBasedCorsConfigurationSource corsConfigurationSource = new UrlBasedCorsConfigurationSource();
         corsConfigurationSource.registerCorsConfiguration("/**",configuration);

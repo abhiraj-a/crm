@@ -3,6 +3,7 @@ package com.CRM.Controller;
 import com.CRM.Service.GoogleAdsAuthService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 import java.util.Map;
 import java.util.HashMap;
@@ -28,9 +29,27 @@ public class GoogleAdsAuthController {
         
         try {
             googleAdsAuthService.processGoogleCallback(code, state);
-            return ResponseEntity.ok("Successfully connected Google Ads.");
+            String successHtml = "<!DOCTYPE html><html><body>" +
+                    "<script>" +
+                    "  if (window.opener) {" +
+                    "    window.opener.postMessage({ type: 'Google_AUTH_SUCCESS' }, '*');" +
+                    "  }" +
+                    "  window.close();" +
+                    "</script>" +
+                    "<p>Successfully connected Google Ads. You can close this window.</p>" +
+                    "</body></html>";
+            return ResponseEntity.ok().contentType(MediaType.TEXT_HTML).body(successHtml);
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body("Failed to connect: " + e.getMessage());
+            String errorHtml = "<!DOCTYPE html><html><body>" +
+                    "<script>" +
+                    "  if (window.opener) {" +
+                    "    window.opener.postMessage({ type: 'Google_AUTH_ERROR', message: '" + e.getMessage() + "' }, '*');" +
+                    "  }" +
+                    "  window.close();" +
+                    "</script>" +
+                    "<p>Failed to connect Google Ads: " + e.getMessage() + ". You can close this window.</p>" +
+                    "</body></html>";
+            return ResponseEntity.status(400).contentType(MediaType.TEXT_HTML).body(errorHtml);
         }
     }
     
